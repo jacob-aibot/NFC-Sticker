@@ -19,3 +19,26 @@ To view it standalone: serve the `mirror/` directory (it loads
 `../vendor/anime.min.js`) and open `archive/peony-svg-checkpoint.html`
 directly — it's a fully self-contained page, not wired into the live
 `/mirror/` rotation.
+
+## peony-video-prototype.html + flowers/
+
+A working proof of concept for a pre-rendered-video featured-flower
+architecture (video + poster + final-frame image, dynamic per-day
+preload, graceful failure, cross-fade handoff) — explored after
+`peony-svg-checkpoint.html`, then set aside: the project reconsidered the
+photorealism goal itself rather than the SVG-vs-video question, and
+returned to SVG/Anime.js with a deliberately simplified animation
+philosophy (see the live `mirror/index.html` and its own code comments).
+
+`flowers/peony.mp4` / `peony-poster.jpg` / `peony-final.jpg` are a
+synthetic placeholder (see `flowers/README.md`), never a real generated
+asset. `flowers/GENERATION-SPEC.md` is a real, reusable AI-video
+generation spec (prompt, negative prompt, settings, post-production
+pipeline) written for this architecture — kept here in case pre-rendered
+video is revisited later, since that spec work doesn't go stale just
+because the architecture isn't live right now.
+
+To view standalone: serve `mirror/` and open
+`archive/peony-video-prototype.html` directly — it loads
+`../vendor/anime.min.js` and `flowers/...` (both resolve correctly from
+inside `archive/`).
