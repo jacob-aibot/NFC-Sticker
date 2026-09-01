@@ -1,0 +1,1293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#211823">
+<title>Morning Mirror</title>
+<meta name="description" content="A featured flower that grows in and changes every three days, and a tap-to-reveal note — a fresh line every time, cycling through without repeats.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%AA%9E%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Non-render-blocking font load: a plain <link rel="stylesheet"> here would
+     block first paint on the font host resolving, which is exactly the "13s
+     of blank white before anything renders" failure this project already hit
+     once under bad network conditions — the dark canvas must be able to
+     paint immediately regardless of font load speed. Loaded as a low-priority
+     preload and promoted to a stylesheet onload; the <noscript> is the only-JS
+     fallback. entrance start itself is separately gated on document.fonts.ready
+     (see the script below) so the animation still never starts mid-font-swap. -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Archivo:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+<style>
+  :root{
+    color-scheme: dark;
+    --ink: #211823;
+    --ink-2: #2c2130;
+    --ink-3: #37283c;
+    --paper: #f6ece4;
+    --paper-dim: #cdbdc4;
+    --accent: #e3a34e;
+    --accent-soft: #c97b9c;
+    --muted: #9c8a97;
+    --line: rgba(246,236,228,0.14);
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+
+  html{ background: var(--ink); }
+
+  body{
+    background: var(--ink);
+    color: var(--paper);
+    min-height: 100dvh;
+    margin:0;
+    font-family: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  .ambient{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:0;
+    background:
+      radial-gradient(55% 42% at 30% 14%, rgba(227,163,78,0.17), transparent 68%),
+      radial-gradient(60% 46% at 82% 82%, rgba(201,123,156,0.13), transparent 72%);
+  }
+
+  /* extremely subtle grain over the dark ground — filter:url() SVG turbulence
+     baked once as a data URI, not an image asset. Kept faint enough to read
+     as "paper/air", never as visible noise. */
+  .ambient::after{
+    content:'';
+    position:absolute;
+    inset:0;
+    opacity:0.05;
+    mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* full-bleed, no card chrome — the dark ground itself is the composition.
+     Centered as a group (not pinned to the bottom via margin-top:auto) so
+     the flower and letter form one tight composition instead of two zones
+     with dead space between; env() insets keep it clear of the notch/home
+     indicator when this is ever opened as a saved full-screen page. */
+  .scene{
+    position:relative;
+    z-index:1;
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:
+      calc(4.5vh + env(safe-area-inset-top))
+      max(7.5vw, env(safe-area-inset-left))
+      calc(4.5vh + env(safe-area-inset-bottom))
+      max(7.5vw, env(safe-area-inset-right));
+  }
+
+  .composition{
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* --- featured flower --- */
+
+  .bloom-zone{
+    position:relative;
+    perspective: 640px;
+    margin-bottom: -0.3rem;
+  }
+
+  .bloom{
+    display:block;
+    /* capped by vh too, not just vw/px — the viewBox is tall (240x380), so
+       on a short iPhone (e.g. 375x667) an 84vw-wide flower renders ~500px
+       tall and pushes "one more" off-screen; the vh cap shrinks the flower
+       on short screens instead of forcing a scroll to reach it. */
+    width: min(84vw, 320px, 39vh);
+    height:auto;
+    overflow: visible;
+    filter: drop-shadow(0 20px 32px rgba(0,0,0,0.5));
+  }
+
+  /* name + meaning float in the bloom's own negative space, not a label row */
+  /* sits beside the stem, not the bloom canopy — the peony's petals are
+     round enough near the top that no position beside them clears the
+     text; the stem below is narrow and has real open space beside it. */
+  .flower-text{
+    position:absolute;
+    right:0;
+    top:40%;
+    max-width:46%;
+    text-align:right;
+    opacity:0;
+    transform:translateY(8px);
+  }
+
+  .flower-name{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(1.55rem, 7.4vw, 2rem);
+    line-height:1.05;
+    color: var(--paper);
+    margin: 0 0 0.5rem;
+  }
+
+  /* an elegant caption, not a metadata row — italic serif, the same family
+     as the letter's sign-off, not a small muted sans-serif label. */
+  .flower-meaning{
+    font-family:'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 0.85rem;
+    line-height:1.5;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  /* the note reads as a letter: quiet, generous, no boxed divider — pulled
+     close under the flower rather than pushed to the bottom of the screen */
+  .letter{
+    padding-top: 0.5rem;
+    max-width: 26rem;
+    display:flex;
+    flex-direction:column;
+    opacity:0;
+    transform:translateY(8px);
+  }
+
+  /* a letter's dateline, not a UI kicker — italic serif instead of a bold
+     uppercase accent-colored label */
+  .eyebrow{
+    font-family:'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 0.85rem;
+    letter-spacing: 0.01em;
+    text-transform:none;
+    color: var(--muted);
+    margin: 0 0 0.7rem;
+  }
+
+  .eyebrow .date{
+    color: var(--accent-soft);
+  }
+
+  .note{
+    font-family:'Fraunces', Georgia, 'Iowan Old Style', serif;
+    font-optical-sizing:auto;
+    font-weight: 420;
+    font-size: clamp(1.28rem, 5.6vw, 1.6rem);
+    line-height: 1.5;
+    letter-spacing: 0.002em;
+    text-wrap: balance;
+    color: var(--paper);
+    margin: 0;
+    transition: opacity .35s ease;
+  }
+
+  .note.turning{ opacity: 0; }
+
+  .sign{
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-style: italic;
+    font-family:'Fraunces', Georgia, serif;
+    margin-top: 0.6rem;
+  }
+
+  /* explicit tap target, visually quiet: the visible text stays small, but
+     the hit area is a full 44px tall via padding + flex centering, not the
+     text's own line box. */
+  .again{
+    appearance:none;
+    background:none;
+    border:none;
+    align-self:flex-end;
+    margin-top: 1.2rem;
+    margin-right: -0.2rem;
+    display:inline-flex;
+    align-items:center;
+    min-height: 44px;
+    color: var(--accent-soft);
+    font-family:'Archivo', sans-serif;
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform:lowercase;
+    font-weight:600;
+    padding: 0.5rem 0.2rem;
+    cursor:pointer;
+    opacity:0;
+  }
+  .again:hover{ color: var(--accent); }
+  .again:focus-visible{ outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+  @media (prefers-reduced-motion: reduce){
+    .note{ transition:none; }
+    .flower-text, .letter, .again{ opacity:1; transform:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient"></div>
+<div class="scene">
+  <div class="composition">
+    <div class="bloom-zone">
+      <svg class="bloom" id="bloom" viewBox="0 0 220 260" role="img" aria-labelledby="bloomTitle"></svg>
+      <div class="flower-text">
+        <p class="flower-name" id="flowerName">&nbsp;</p>
+        <p class="flower-meaning" id="flowerMeaning">&nbsp;</p>
+      </div>
+    </div>
+
+    <div class="letter">
+      <p class="eyebrow">This morning<span class="date" id="thisDate"></span></p>
+      <p class="note" id="note">Loading…</p>
+      <p class="sign" id="sign">— for you</p>
+      <button class="again" id="again" type="button">one more →</button>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/anime.min.js"></script>
+<script>
+/* =========================================================================
+   FEATURED FLOWER — deterministic, date-based, no localStorage.
+   Completely independent of the love-note deck below: nothing in this
+   section is read or written by the note logic, and nothing in the note
+   logic touches the flower. The flower is computed once on page load.
+
+   VERTICAL SLICE: this collection currently holds 6 of the planned ~30
+   species (Peonies, Tulips, Orchids, Hydrangeas, Lavender, Wisteria),
+   chosen to exercise 5 different animation choreography families. The
+   rotation math below is written against FLOWERS.length generically, so
+   it works correctly at this size and will keep working unchanged once
+   the remaining species are added back.
+   ========================================================================= */
+
+// PLACEHOLDER — set to the actual local calendar date this redesigned
+// Morning Mirror ships (YYYY-MM-DD), then leave it fixed forever after.
+// Do NOT set this to "today" casually; it anchors every future rotation.
+var MIRROR_LAUNCH_DATE = '2000-01-01'; // TODO: set real launch date before shipping
+
+// ---- small geometry helpers ----
+
+function pt(cx, cy, r, deg){
+  var a = (deg - 90) * Math.PI / 180;
+  return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+}
+
+function bez(p0, p1, p2, p3, t){
+  var mt = 1 - t;
+  return [
+    mt*mt*mt*p0[0] + 3*mt*mt*t*p1[0] + 3*mt*t*t*p2[0] + t*t*t*p3[0],
+    mt*mt*mt*p0[1] + 3*mt*mt*t*p1[1] + 3*mt*t*t*p2[1] + t*t*t*p3[1]
+  ];
+}
+
+// ---- color helpers (flat, opaque shading instead of alpha blending) ----
+
+function hexToRgb(hex){
+  hex = hex.replace('#','');
+  return [parseInt(hex.substr(0,2),16), parseInt(hex.substr(2,2),16), parseInt(hex.substr(4,2),16)];
+}
+function rgbToHex(r,g,b){
+  return '#' + [r,g,b].map(function(v){
+    v = Math.max(0, Math.min(255, Math.round(v)));
+    var s = v.toString(16);
+    return s.length < 2 ? '0'+s : s;
+  }).join('');
+}
+function mixColor(hexA, hexB, t){
+  var a = hexToRgb(hexA), b = hexToRgb(hexB);
+  return rgbToHex(a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t);
+}
+function shadeColor(hex, amt){
+  var c = hexToRgb(hex);
+  if (amt < 0) return rgbToHex(c[0]*(1+amt), c[1]*(1+amt), c[2]*(1+amt));
+  return rgbToHex(c[0]+(255-c[0])*amt, c[1]+(255-c[1])*amt, c[2]+(255-c[2])*amt);
+}
+
+// smooth closed curve through a list of points (quadratic bezier through
+// each point, ending at the midpoint to the next) — gives an organic,
+// slightly wavy outline instead of a hand-drawn-perfect bezier.
+function smoothClosedPath(points){
+  var d = 'M' + points[0];
+  var n = points.length;
+  for (var i=0;i<n;i++){
+    var cur = points[i], nxt = points[(i+1)%n];
+    var midx = (cur[0]+nxt[0])/2, midy = (cur[1]+nxt[1])/2;
+    d += ' Q' + cur + ' ' + [midx,midy];
+  }
+  d += ' Z';
+  return d;
+}
+
+// organic, asymmetric, gently ruffled petal: base at (0,0), tip pointing up.
+// Sampled as a ruffled envelope rather than a single smooth bezier per side,
+// so the edge reads as a real petal margin, not a clean geometric teardrop.
+function petalD(len, baseW, curveL, curveR, tipSkew, tipRound){
+  tipRound = (tipRound == null) ? 0.24 : tipRound;
+  tipSkew = tipSkew || 0;
+  var asym = (curveR - curveL) * 0.5;
+  var fullness = (curveL + curveR) / 2;
+  var ruffleAmp = 0.1 * fullness;
+  var ruffleFreq = 2.6 + (tipSkew % 1) * 0.8;
+  var phase = tipSkew * 4.1;
+  var half = 6;
+  var pts = [];
+  var i, u, floor, w;
+  for (i=0; i<=half; i++){
+    u = i/half;
+    floor = Math.max(u, Math.min(0.85, Math.max(0.03, tipRound)));
+    w = baseW*0.5*fullness*Math.pow(Math.sin(Math.PI*floor), 0.7) * (1 - asym*0.35);
+    w *= 1 + ruffleAmp*Math.sin(u*ruffleFreq*Math.PI*2 + phase);
+    pts.push([-Math.max(w,0.35), -u*len]);
+  }
+  for (i=half; i>=0; i--){
+    u = i/half;
+    floor = Math.max(u, Math.min(0.85, Math.max(0.03, tipRound)));
+    w = baseW*0.5*fullness*Math.pow(Math.sin(Math.PI*floor), 0.7) * (1 + asym*0.35);
+    w *= 1 + ruffleAmp*Math.sin(u*ruffleFreq*Math.PI*2 + phase + 1.7);
+    pts.push([Math.max(w,0.35), -u*len]);
+  }
+  return smoothClosedPath(pts);
+}
+
+function leafD(len, width, curve){
+  var tipY = -len;
+  return 'M0,0 C' + [-width*curve, -len*0.42] + ' ' + [-width*0.16, tipY+len*0.16] + ' ' + [0, tipY] +
+         ' C' + [width*0.16, tipY+len*0.16] + ' ' + [width*curve*0.82, -len*0.36] + ' ' + [0,0] + ' Z';
+}
+
+function stemD(x1,y1,x2,y2,bow){
+  var mx = (x1+x2)/2 + bow, my = (y1+y2)/2;
+  return 'M'+x1+','+y1+' Q'+mx+','+my+' '+x2+','+y2;
+}
+
+function budShape(len, w){
+  return 'M0,0 C'+[-w*0.5,-len*0.15]+' '+[-w*0.5,-len*0.75]+' 0,-'+len+
+         ' C'+[w*0.5,-len*0.75]+' '+[w*0.5,-len*0.15]+' 0,0 Z';
+}
+
+// ---- shared parts ----
+
+function gradDefs(sp){
+  var c = sp.c;
+  var out = '<defs>';
+  if (c.center){
+    out += '<radialGradient id="cg'+sp.id+'" cx="45%" cy="40%" r="65%">' +
+             '<stop offset="0%" stop-color="'+c.center+'"/>' +
+             '<stop offset="100%" stop-color="'+(c.centerEdge||c.center)+'"/>' +
+           '</radialGradient>';
+  }
+  out += '</defs>';
+  return out;
+}
+
+// deterministic irregular step pattern: breaks perfectly-even fan spacing
+// so petals cluster and gap unevenly, the way a real bloom's petals do.
+var STEP_PATTERN = [1, 1.42, 0.6, 1.22, 0.78, 1.3, 0.68, 1.1, 0.86, 1.24, 0.72];
+
+// tulip's cup petals: each is drawn+colored in on its own (outline draws,
+// then color washes in) — the "hand-drawn" choreography, reserved for the
+// one family with few enough large parts that it reads clearly rather than
+// looking busy. Marked .js-petal-draw for the entrance timeline to find.
+function petalLayer(cx,cy,count,radius,len,baseW,curveL,curveR,tipRound,rot,jitter,spread,fillColor,cxOff,cyOff){
+  spread = spread || 360;
+  var out = '';
+  var stroke = shadeColor(fillColor, -0.32);
+  var vein = shadeColor(fillColor, -0.22);
+  var lcx = cx + (cxOff||0), lcy = cy + (cyOff||0);
+  var weights = [], total = 0, k;
+  for (k=0;k<count;k++){ var w = STEP_PATTERN[k % STEP_PATTERN.length]; weights.push(w); total += w; }
+  var cum = 0;
+  for (var i=0;i<count;i++){
+    var j = (jitter && jitter[i % jitter.length]) || 0;
+    var ang = rot + (cum/total)*spread + j*1.6;
+    cum += weights[i];
+    var rr = radius * (1 + j*0.06);
+    var p = pt(lcx,lcy,rr,ang);
+    var skew = ((i%2===0)?1:-1) * len * 0.03 + (j*0.22) + i*0.41;
+    var scale = 1 + j*0.07;
+    var pLen = len*scale, pW = baseW*scale;
+    var d = petalD(pLen, pW, curveL, curveR, skew, tipRound);
+    out += '<g transform="translate('+p[0]+','+p[1]+') rotate('+ang+')">' +
+             '<path class="js-petal-draw" d="'+d+'" fill="'+fillColor+'" fill-opacity="0" stroke="'+stroke+'" stroke-width="0.6" stroke-opacity="0.65" stroke-linejoin="round" style="stroke-dasharray:400;stroke-dashoffset:400;"/>' +
+             '<path d="M0,'+(-pLen*0.12)+' Q'+(skew*0.4)+','+(-pLen*0.55)+' '+skew+','+(-pLen*0.86)+'" fill="none" stroke="'+vein+'" stroke-width="0.45" stroke-opacity="0.35" stroke-linecap="round"/>' +
+           '</g>';
+  }
+  return out;
+}
+
+// stem always id="stemPath" (the entrance timeline draws it via
+// stroke-dashoffset); leaves get an inner .js-leaf group so they can unfurl
+// from a small scale without losing their static position/rotation, which
+// lives on an outer, never-animated <g transform="...">.
+function stemAndLeaves(sp){
+  if (!sp.stem) return '';
+  var s = sp.stem;
+  var x1 = 110, y1 = s.y1, x2 = s.x2, y2 = s.y2;
+  var out = '<path id="stemPath" d="'+stemD(x1,y1,x2,y2,s.bow||0)+'" fill="none" stroke="'+s.color+'" stroke-width="'+(s.width||3)+'" stroke-linecap="round" style="stroke-dasharray:1000;stroke-dashoffset:1000;"/>';
+  (s.leaves||[]).forEach(function(L){
+    var base = bez([x1,y1],[x1+(s.bow||0),(y1+y2)/2],[x1+(s.bow||0),(y1+y2)/2],[x2,y2], L.t);
+    var d = leafD(L.len, L.width, L.curve||1);
+    var stroke = shadeColor(s.leafColor, -0.25);
+    out += '<g transform="translate('+base[0]+','+base[1]+') rotate('+L.rot+')">' +
+             '<g class="js-leaf" style="transform-origin:0px 0px; transform:scale(0.12);">' +
+               '<path d="'+d+'" fill="'+s.leafColor+'" stroke="'+stroke+'" stroke-width="0.5" stroke-opacity="0.4"/>' +
+             '</g>' +
+           '</g>';
+  });
+  return out;
+}
+
+function centerDisc(cx,cy,cfg,gradId){
+  if (!cfg) return '';
+  var out = '<circle cx="'+cx+'" cy="'+cy+'" r="'+cfg.r+'" fill="url(#'+gradId+')"/>';
+  if (cfg.texture){
+    var n = cfg.textureCount || 14;
+    for (var i=0;i<n;i++){
+      var ang = i*(360/n)*3.2 % 360;
+      var rr = cfg.r * (0.15 + 0.55*((i*29)%9)/9);
+      var p = pt(cx,cy,rr,ang);
+      out += '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="0.5" fill="'+cfg.textureColor+'" fill-opacity="0.7"/>';
+    }
+  }
+  return out;
+}
+
+// ---- archetype: layered radial (tulip's cup, in this slice) ----
+function layeredArt(cx,cy,sp){
+  var out = '';
+  var n = sp.layers.length;
+  var shadow = shadeColor(sp.c.deep, -0.30);
+  var highlight = mixColor(sp.c.deep, sp.c.light, 0.85);
+  sp.layers.forEach(function(L, idx){
+    var t = n > 1 ? idx/(n-1) : 1;
+    var fill = t < 0.5
+      ? mixColor(shadow, sp.c.deep, t*2)
+      : mixColor(sp.c.deep, highlight, (t-0.5)*2);
+    var cxOff = ((idx*37)%5 - 2) * 0.8;
+    var cyOff = ((idx*53)%5 - 2) * 0.8;
+    out += petalLayer(cx,cy,L.count,L.radius,L.len,L.baseW,L.curveL,L.curveR,L.tipRound,L.rot,L.jitter,L.spread,fill,cxOff,cyOff);
+  });
+  if (sp.center) out += centerDisc(cx,cy,sp.center,'cg'+sp.id);
+  return out;
+}
+
+// ---- archetype: phyllotaxis bloom (peony) ----
+// A golden-angle scatter, not concentric rings, so there's no clean
+// N-pointed silhouette to read as a mandala. Outer petals (large, shadowed)
+// paint first; inner petals (small, lit) paint last, so occlusion puts the
+// youngest petals up front. Each petal gets its own .js-petal-pop wrapper
+// (radius-order stagger via data-t) so the bloom expands outward from the
+// center rather than popping in all at once.
+function phylloBloom(cx,cy,sp){
+  var out = '';
+  var b = sp.bloom;
+  var golden = 137.508;
+  var n = b.count;
+  var shadow = shadeColor(sp.c.deep, -0.3);
+  var highlight = mixColor(sp.c.deep, sp.c.light, 0.88);
+  for (var i=0;i<n;i++){
+    var t = 1 - i/(n-1);
+    var r = b.spread * Math.pow(t, 0.56);
+    var ang = i * golden + b.rotSeed;
+    var fill = t < 0.5 ? mixColor(highlight, sp.c.deep, t*2) : mixColor(sp.c.deep, shadow, (t-0.5)*2);
+    var sizeT = 0.55 + 0.6*t;
+    var len = b.petalLen * sizeT;
+    var w = b.petalW * sizeT;
+    var p = pt(cx, cy - b.lift, r, ang);
+    var faceAng = ang + (((i*53)%9)-4)*2.2;
+    var skew = (((i*31)%7)-3)*0.8;
+    var d = petalD(len, w, 1.08, 0.92, skew, 0.3);
+    var stroke = shadeColor(fill, -0.28);
+    out += '<g transform="translate('+p[0]+','+p[1]+') rotate('+faceAng+')">' +
+             '<g class="js-petal-pop" data-t="'+t.toFixed(3)+'" style="transform-origin:0px 0px; transform:scale(0);">' +
+               '<path d="'+d+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="0.5" stroke-opacity="0.5"/>' +
+             '</g>' +
+           '</g>';
+  }
+  if (sp.center){
+    var ccx = cx, ccy = cy - b.lift;
+    out += '<g class="js-center-pop" style="transform-origin:'+ccx+'px '+ccy+'px; transform:scale(0);">' +
+             centerDisc(ccx, ccy, sp.center, 'cg'+sp.id) +
+           '</g>';
+  }
+  return out;
+}
+
+// ---- archetype: mophead cluster (hydrangea) ----
+// Small florets as four overlapping notched-tip lobes rather than the
+// general ruffled petal path — at this tiny scale a simple lobe reads far
+// cleaner than a sampled organic edge, which just turns to noise. Each
+// floret gets its own .js-floret-pop wrapper; DOM order already follows
+// the phyllotaxis fill-in order, so the default stagger populates the
+// cluster from center outward without extra sorting.
+function floretLobe(size, notch){
+  var w = size*0.5, len = size;
+  var tipY = -len;
+  return 'M0,0 C'+[-w,-len*0.25]+' '+[-w*0.9,tipY+len*0.32]+' '+[-notch,tipY+len*0.08]+
+         ' L0,'+tipY+' L'+notch+','+(tipY+len*0.08)+
+         ' C'+[w*0.9,tipY+len*0.32]+' '+[w,-len*0.25]+' 0,0 Z';
+}
+function mopheadArt(cx,cy,sp){
+  var out = '';
+  var n = sp.florets.count;
+  var golden = 137.508;
+  for (var i=0;i<n;i++){
+    var r = sp.florets.spread * Math.sqrt(i / n);
+    var ang = i * golden;
+    var p = pt(cx, cy - sp.florets.domeLift, r, ang);
+    var scale = 0.68 + 0.4 * (1 - r / sp.florets.spread) + (((i*17)%5)/5)*0.1;
+    var hueSet = sp.florets.hues;
+    var baseFill = hueSet[i % hueSet.length];
+    var fill = shadeColor(baseFill, ((i*7)%5-2)*0.05);
+    var edge = shadeColor(fill, -0.22);
+    var rot = (i * 61) % 360;
+    var size = sp.florets.petalLen * scale * 1.35;
+    var notch = size*0.09;
+    var lobeD = floretLobe(size, notch);
+    var g = '<g transform="translate('+p[0]+','+p[1]+') rotate('+rot+')">' +
+              '<g class="js-floret-pop" style="transform-origin:0px 0px; transform:scale(0);">';
+    for (var k=0;k<4;k++){
+      var pa = k*90;
+      g += '<path d="'+lobeD+'" transform="rotate('+pa+')" fill="'+fill+'" stroke="'+edge+'" stroke-width="0.35" stroke-opacity="0.5"/>';
+    }
+    g += '<circle cx="0" cy="0" r="'+(size*0.16)+'" fill="'+sp.florets.centerColor+'"/>';
+    g += '</g></g>';
+    out += g;
+  }
+  return out;
+}
+
+// ---- archetype: orchid (bilateral, lip) ----
+// Real proportions matter more than detail: a dorsal sepal standing up, two
+// lower sepals splayed down-back, two broad lateral petals forming the
+// "face", and a modestly-sized lip in front. Sepals/petals rotate open from
+// a folded angle (data-fold-rot) to their resting angle (data-final-rot) —
+// the "unfold" choreography — with the lip resolving last.
+function orchidArt(cx,cy,sp){
+  var c = sp.c, out = '';
+  var sepalColor = shadeColor(c.deep2 || c.deep, -0.14);
+  var petalColor = mixColor(c.deep, c.light, 0.4);
+  var part = function(ang, len, w, fill, tipRound, kind, fold){
+    var d = petalD(len, w, 1, 1, 0, tipRound);
+    var p = pt(cx,cy,6,ang);
+    var stroke = shadeColor(fill, -0.28);
+    return '<g transform="translate('+p[0]+','+p[1]+')">' +
+             '<g class="js-orchid-part '+kind+'" data-final-rot="'+ang+'" data-fold-rot="'+fold+'" style="transform-origin:0px 0px; opacity:0; transform:rotate('+fold+'deg);">' +
+               '<path d="'+d+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="0.6" stroke-opacity="0.5"/>' +
+             '</g>' +
+           '</g>';
+  };
+  out += part(4, sp.dims.sepalLen, sp.dims.sepalW, sepalColor, 0.26, 'sepal', -10);
+  out += part(144, sp.dims.sepalLen*0.94, sp.dims.sepalW*0.9, sepalColor, 0.24, 'sepal', 130);
+  out += part(220, sp.dims.sepalLen*0.9, sp.dims.sepalW*0.9, sepalColor, 0.24, 'sepal', 190);
+  out += part(-58, sp.dims.petalLen, sp.dims.petalW, petalColor, 0.34, 'petal', -14);
+  out += part(60, sp.dims.petalLen, sp.dims.petalW, petalColor, 0.34, 'petal', 18);
+
+  var lipCy = cy + sp.dims.lipDrop;
+  var lw = sp.dims.lipW, lh = sp.dims.lipLen;
+  var lipPts = [
+    [0,-lh*0.08], [-lw*0.22,lh*0.05], [-lw*0.52,lh*0.28], [-lw*0.58,lh*0.55],
+    [-lw*0.28,lh*0.82], [0,lh], [lw*0.28,lh*0.82], [lw*0.58,lh*0.55],
+    [lw*0.52,lh*0.28], [lw*0.22,lh*0.05]
+  ];
+  var lipInner = '<path d="'+smoothClosedPath(lipPts)+'" transform="translate('+cx+','+lipCy+')" fill="'+c.lip+'" stroke="'+shadeColor(c.lip,-0.25)+'" stroke-width="0.7" stroke-opacity="0.55"/>';
+  for (var i=0;i<3;i++){
+    var sx = (i-1)*4.5;
+    lipInner += '<path d="M0,0 L'+(sx*0.7)+','+(lh*0.5)+'" stroke="'+c.lipMark+'" stroke-width="0.9" fill="none" opacity="0.75" transform="translate('+cx+','+(lipCy+1)+')"/>';
+  }
+  lipInner += '<ellipse cx="'+cx+'" cy="'+(cy+3)+'" rx="3.4" ry="4.6" fill="'+c.column+'" stroke="'+shadeColor(c.column,-0.2)+'" stroke-width="0.5"/>';
+  out += '<g class="js-petal-pop lip" style="transform-origin:'+cx+'px '+(lipCy+lh*0.5)+'px; transform:scale(0);">' + lipInner + '</g>';
+  return out;
+}
+
+// ---- archetype: spike / raceme (lavender upright, wisteria pendant) ----
+// Draws its own stem (id="stemPath") rather than going through
+// stemAndLeaves — these two species have no separate leaf stage, so their
+// entrance goes straight from stem to florets. DOM order already runs
+// base-to-tip (lavender) / attachment-to-cascade-tip (wisteria), which is
+// exactly the populate direction each species blooms in, so the default
+// stagger order needs no adjustment.
+function spikeArt(cx,cy,sp){
+  var s = sp.spike, out = '';
+  var p0 = [cx, cy + s.startY];
+  var p1 = [cx + s.bow1, cy + s.startY + (s.endY - s.startY)*0.33];
+  var p2 = [cx + s.bow2, cy + s.startY + (s.endY - s.startY)*0.66];
+  var p3 = [cx + s.dx, cy + s.endY];
+  out += '<path id="stemPath" d="M'+p0+' C'+p1+' '+p2+' '+p3+'" fill="none" stroke="'+s.stemColor+'" stroke-width="2.4" stroke-linecap="round" style="stroke-dasharray:1000;stroke-dashoffset:1000;"/>';
+
+  var shadow = shadeColor(sp.c.deep, -0.22);
+  var highlight = mixColor(sp.c.deep, sp.c.light, 0.8);
+  var n = s.count;
+  for (var i=0;i<n;i++){
+    var t = (i+1)/(n+1);
+    var base = bez(p0,p1,p2,p3,t);
+    var tangent = bez(p0,p1,p2,p3,Math.min(1,t+0.02));
+    var dirAng = Math.atan2(tangent[1]-base[1], tangent[0]-base[0]) * 180/Math.PI + 90;
+    var side = (i%2===0) ? 1 : -1;
+    var scale = s.taper ? (1 - t*0.45) : (0.85 + 0.3*(((i*13)%5)/5));
+    var floretAng = dirAng + side*s.spread + ((i*29)%7 - 3);
+    var d = budShape(s.floretLen*scale, s.floretW*scale);
+    var fill = t < 0.5 ? mixColor(shadow, sp.c.deep, t*2) : mixColor(sp.c.deep, highlight, (t-0.5)*2);
+    out += '<g transform="translate('+base[0]+','+base[1]+') rotate('+floretAng+')">' +
+             '<g class="js-floret-pop" style="transform-origin:0px 0px; transform:scale(0);">' +
+               '<path d="'+d+'" fill="'+fill+'" stroke="'+shadeColor(fill,-0.25)+'" stroke-width="0.4" stroke-opacity="0.5"/>' +
+             '</g>' +
+           '</g>';
+  }
+  return out;
+}
+
+// ---- PEONY: beautiful animated illustration, not a literal bud-biology
+// simulation. An earlier version modeled a real developmental sequence
+// (closed bud -> calyx peels open -> 48 individually-choreographed petals
+// emerge) and a separate pre-rendered-video architecture was explored
+// after that for more realism — both are archived (mirror/archive/), not
+// deleted. This version deliberately abandons both: the goal now is
+// SMOOTHNESS > COMPLEXITY, roughly 3 overlapping motions (stem+leaves,
+// bloom, settle-while-typography-resolves), landing around 2-2.5s.
+// Petals are grouped into 3 animated tiers rather than 48 individually
+// timed elements — the *final* silhouette is the same organic, irregular
+// phyllotaxis scatter as before (still no mandala symmetry), only the
+// number of independently-choreographed things changes.
+
+function peonyStemControls(x1,y1,x2,y2,bow){
+  var c1x = x1 + bow, c1y = y1 - (y1-y2)*0.28;
+  var c2x = x2 - bow*0.85, c2y = y2 + (y1-y2)*0.30;
+  return [[x1,y1],[c1x,c1y],[c2x,c2y],[x2,y2]];
+}
+function peonyStemD(x1,y1,x2,y2,bow){
+  var c = peonyStemControls(x1,y1,x2,y2,bow);
+  return 'M'+c[0]+' C'+c[1]+' '+c[2]+' '+c[3];
+}
+
+// IMPORTANT: the initial stroke-dasharray/stroke-dashoffset placeholder
+// must be set as a plain XML attribute here, never inside style="...".
+// anime.js's setDashoffset() sets the real dasharray via setAttribute(),
+// which an inline-style value would permanently outrank in the cascade.
+function renderPeonyStemLeaves(sp){
+  var s = sp.stem;
+  var x1 = s.x1, y1 = s.y1, x2 = s.x2, y2 = s.y2;
+  var ctrl = peonyStemControls(x1,y1,x2,y2,s.bow||0);
+  var out = '<path id="stemPath" d="'+peonyStemD(x1,y1,x2,y2,s.bow||0)+'" fill="none" stroke="'+s.color+'" stroke-width="'+(s.width||3)+'" stroke-linecap="round" stroke-dasharray="1200" stroke-dashoffset="1200" style="transform-origin:'+x1+'px '+y1+'px;"/>';
+  (s.leaves||[]).forEach(function(L, i){
+    var base = bez(ctrl[0], ctrl[1], ctrl[2], ctrl[3], L.t);
+    var d = leafD(L.len, L.width, L.curve||1);
+    var stroke = shadeColor(s.leafColor, -0.25);
+    // per-leaf 3D pose, adapted from gmpsankalpa/Flower-animation's leaf
+    // treatment: each leaf gets its own compound rotateX+rotateY resting
+    // tilt (alternating toward/away from camera) instead of every leaf
+    // sweeping through the identical rotateY-only arc. rotateX is 0 while
+    // furled (flat against the stem) and opens to its resting tilt as the
+    // leaf grows.
+    var ryFurled = -60 - ((i*9)%16);
+    var ryFinal = -6 - ((i*11)%18);
+    var rxFinal = ((i%2) ? 1 : -1) * (16 + (i*7)%16);
+    out += '<g transform="translate('+base[0]+','+base[1]+') rotate('+L.rot+')">' +
+             '<g class="js-leaf" data-ry-furled="'+ryFurled+'" data-ry-final="'+ryFinal+'" data-rx-final="'+rxFinal+'" ' +
+                'style="transform-origin:0px 0px; transform:rotateY('+ryFurled+'deg) rotateX(0deg) scaleY(0.16) scaleX(0.3);">' +
+               '<path d="'+d+'" fill="'+s.leafColor+'" stroke="'+stroke+'" stroke-width="0.5" stroke-opacity="0.4"/>' +
+             '</g>' +
+           '</g>';
+  });
+  return out;
+}
+
+// blunt-tip petal profile — real width at the tip instead of tapering to
+// a point (petalD's default), so a dense multi-petal bloom reads as
+// rounded and full instead of a spiky star.
+function peonyPetalD(len, baseW, curveL, curveR, tipSkew, tipRound){
+  tipRound = (tipRound == null) ? 0.24 : tipRound;
+  tipSkew = tipSkew || 0;
+  var asym = (curveR - curveL) * 0.5;
+  var fullness = (curveL + curveR) / 2;
+  var ruffleAmp = 0.1 * fullness;
+  var ruffleFreq = 2.6 + (tipSkew % 1) * 0.8;
+  var phase = tipSkew * 4.1;
+  var half = 6;
+  var pts = [];
+  var i, u, floor, w;
+  for (i=0; i<=half; i++){
+    u = i/half;
+    floor = Math.max(Math.min(u, 0.9), Math.min(0.85, Math.max(0.03, tipRound)));
+    w = baseW*0.5*fullness*Math.pow(Math.sin(Math.PI*floor), 0.7) * (1 - asym*0.35);
+    w *= 1 + ruffleAmp*Math.sin(u*ruffleFreq*Math.PI*2 + phase);
+    pts.push([-Math.max(w,0.35), -u*len]);
+  }
+  for (i=half; i>=0; i--){
+    u = i/half;
+    floor = Math.max(Math.min(u, 0.9), Math.min(0.85, Math.max(0.03, tipRound)));
+    w = baseW*0.5*fullness*Math.pow(Math.sin(Math.PI*floor), 0.7) * (1 + asym*0.35);
+    w *= 1 + ruffleAmp*Math.sin(u*ruffleFreq*Math.PI*2 + phase);
+    pts.push([Math.max(w,0.35), -u*len]);
+  }
+  return smoothClosedPath(pts);
+}
+
+// a small rounded lobe used only for the two static grounding sepals below
+// (not the old closed-bud shape — there's no separate bud state anymore).
+function peonySepalD(len, w){
+  var pts = [
+    [0,0],
+    [-w*0.50, -len*0.10], [-w*0.60, -len*0.40], [-w*0.40, -len*0.72], [-w*0.13, -len*0.94],
+    [0, -len],
+    [w*0.13, -len*0.94], [w*0.40, -len*0.72], [w*0.60, -len*0.40], [w*0.50, -len*0.10]
+  ];
+  return smoothClosedPath(pts);
+}
+
+// 3 grouped tiers instead of 48 individually-wrapped, individually-timed
+// petals. Final positions/shapes are the same irregular phyllotaxis
+// scatter as before — only the ANIMATION grouping changes. Each tier is
+// one <g> whose own scale/rotate/opacity actually animates; the petals
+// inside it are statically positioned, like paper cutouts mounted on one
+// hinge, not each individually choreographed.
+function renderPeonyBloom(sp){
+  var b = sp.bloom, cx = sp.bud.cx, cy = sp.bud.cy;
+  var golden = 137.508;
+  var n = b.count;
+  var shadow = shadeColor(sp.c.deep, -0.3);
+  var highlight = mixColor(sp.c.deep, sp.c.light, 0.88);
+  var tierMarkup = { outer:'', mid:'', inner:'' };
+
+  for (var i=0;i<n;i++){
+    var t = 1 - i/(n-1);
+    var r = b.spread * Math.pow(t, 0.56);
+    var ang = i * golden + b.rotSeed;
+    var fill = t < 0.5 ? mixColor(highlight, sp.c.deep, t*2) : mixColor(sp.c.deep, shadow, (t-0.5)*2);
+    var sizeT = 0.55 + 0.6*t;
+    var len = b.petalLen * sizeT;
+    var w = b.petalW * sizeT;
+    var p = pt(cx, cy, r, ang);
+    var faceAng = ang + (((i*53)%9)-4)*2.2;
+    var skew = (((i*31)%7)-3)*0.8;
+    var stroke = shadeColor(fill, -0.28);
+    var d = peonyPetalD(len, w, 1.08, 0.92, skew, 0.55);
+    var tierKey = t >= 0.72 ? 'outer' : (t >= 0.4 ? 'mid' : 'inner');
+    // per-petal variation, deterministic from i — kept deliberately small.
+    // This is what breaks the "3 rigid layers" look without per-petal path
+    // morphing or per-petal timeline entries: each petal gets its own tiny
+    // starting scale, rotation jitter, and pivot-point offset, animated by
+    // ONE shared tween per tier (see playPeonySimple) that targets every
+    // .js-petal in that tier via function-based values — not one tween
+    // per petal.
+    var scaleStart = (0.80 + ((i*29)%15)/100).toFixed(3);
+    var rotJitter = ((((i*17)%9)-4) * 1.6).toFixed(2);
+    var originX = ((((i*13)%5)-2) * 0.6).toFixed(2);
+    var originY = ((((i*23)%5)-2) * 0.6).toFixed(2);
+    var delayBand = i % 3;
+    tierMarkup[tierKey] += '<g transform="translate('+p[0]+','+p[1]+') rotate('+faceAng+')">' +
+        '<g class="js-petal" data-scale-start="'+scaleStart+'" data-rot-jitter="'+rotJitter+'" data-delay-band="'+delayBand+'" ' +
+           'style="transform-origin:'+originX+'px '+originY+'px; transform:scale('+scaleStart+') rotate('+rotJitter+'deg);">' +
+          '<path d="'+d+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="0.5" stroke-opacity="0.5"/>' +
+        '</g>' +
+      '</g>';
+  }
+
+  // two small static sepals grounding the bloom's base — no independent
+  // open/close choreography; they just ride along with the outer tier.
+  var sepalColor = mixColor(sp.calyx.deep, sp.calyx.light, 0.3);
+  var sepals =
+    '<g transform="translate('+cx+','+(cy+6)+') rotate(-18)"><path d="'+peonySepalD(b.spread*1.3, b.spread*0.75)+'" fill="'+sepalColor+'" opacity="0.85"/></g>' +
+    '<g transform="translate('+cx+','+(cy+6)+') rotate(150)"><path d="'+peonySepalD(b.spread*1.15, b.spread*0.65)+'" fill="'+shadeColor(sepalColor,-0.15)+'" opacity="0.85"/></g>';
+
+  var centerMarkup = sp.center ? centerDisc(cx, cy, sp.center, 'cg'+sp.id) : '';
+
+  var out = '';
+  out += '<g class="js-tier-outer" style="transform-origin:'+cx+'px '+cy+'px; opacity:0; transform:scale(0.2) rotate(-10deg);">' + sepals + tierMarkup.outer + '</g>';
+  out += '<g class="js-tier-mid" style="transform-origin:'+cx+'px '+cy+'px; opacity:0; transform:scale(0.2) rotate(8deg);">' + tierMarkup.mid + '</g>';
+  out += '<g class="js-tier-inner" style="transform-origin:'+cx+'px '+cy+'px; opacity:0; transform:scale(0.2) rotate(-6deg);">' + tierMarkup.inner + centerMarkup + '</g>';
+  return out;
+}
+
+function renderPeonySimple(sp){
+  var svg = gradDefs(sp);
+  svg += renderPeonyStemLeaves(sp);
+  svg += renderPeonyBloom(sp);
+  return svg;
+}
+
+function setFinalPeonySimpleState(svg){
+  var stemPath = svg.querySelector('#stemPath');
+  if (stemPath){ stemPath.style.strokeDasharray = 'none'; stemPath.style.strokeDashoffset = 0; stemPath.style.transform = 'rotate(0deg)'; }
+  toArray(svg.querySelectorAll('.js-leaf')).forEach(function(el){
+    var ry = el.getAttribute('data-ry-final') || -8;
+    var rx = el.getAttribute('data-rx-final') || 0;
+    el.style.transform = 'rotateY('+ry+'deg) rotateX('+rx+'deg) scaleY(1) scaleX(1)';
+  });
+  toArray(svg.querySelectorAll('.js-tier-outer, .js-tier-mid, .js-tier-inner')).forEach(function(el){
+    el.style.opacity = 1;
+    el.style.transform = 'scale(1) rotate(0deg)';
+  });
+  toArray(svg.querySelectorAll('.js-petal')).forEach(function(el){
+    el.style.transform = 'scale(1) rotate(0deg)';
+  });
+}
+
+// Roughly 3 overlapping motions, ~2-2.5s total, no perceptible stop
+// between any of them:
+//   1. stem grows while leaves begin unfurling
+//   2. the bloom opens as one continuous composition (3 layered tiers,
+//      lightly staggered, each carrying its own settle-overshoot in the
+//      same tween rather than a separate later "settle" stage)
+//   3. typography begins resolving while the outer tier is still
+//      finishing its settle, not after it stops
+function playPeonySimple(sp){
+  var svg = document.getElementById('bloom');
+  var flowerText = document.querySelector('.flower-text');
+  var letter = document.querySelector('.letter');
+  var again = document.getElementById('again');
+
+  if (REDUCE_MOTION){
+    setFinalPeonySimpleState(svg);
+    flowerText.style.opacity = 1; flowerText.style.transform = 'none';
+    letter.style.opacity = 1; letter.style.transform = 'none';
+    again.style.opacity = 0.85;
+    showNote(true);
+    return;
+  }
+
+  var stemPath = svg.querySelector('#stemPath');
+  var leaves = toArray(svg.querySelectorAll('.js-leaf'));
+  var tierOuter = svg.querySelector('.js-tier-outer');
+  var tierMid = svg.querySelector('.js-tier-mid');
+  var tierInner = svg.querySelector('.js-tier-inner');
+
+  var t0 = performance.now();
+  var tl = anime.timeline({ easing:'easeOutCubic' });
+  window.__peonyTl = tl; // testing hook: lets a test harness pause+seek to an exact stage
+
+  // motion 1: stem + leaves, heavily overlapped, each a single tween whose
+  // own easing already carries a gentle settle — no separate spring-back.
+  tl.add({ targets: stemPath, strokeDashoffset:[anime.setDashoffset,0], rotate:[-1.6,0],
+    duration:620, easing:'easeOutSine' }, 0);
+
+  var leafDelay = function(el, i){ return i*90 + ((i*53)%37); };
+  tl.add({ targets: leaves,
+    rotateY: function(el){ return [parseFloat(el.getAttribute('data-ry-furled')), parseFloat(el.getAttribute('data-ry-final'))]; },
+    rotateX: function(el){ return [0, parseFloat(el.getAttribute('data-rx-final'))]; },
+    scaleY:[0.16,1], scaleX:[0.3,1],
+    duration:560, easing:'easeOutBack', delay: leafDelay }, 300);
+
+  // motion 2: the bloom, as one continuous composition — 3 tiers instead
+  // of 48 petals, growing from the stem's tip together with only a light
+  // stagger between them (inner first, as if emerging from the center;
+  // outer last, the way a peony's biggest petals are last to spread).
+  var bloomStart = 640;
+  tl.add({ targets: tierInner, opacity:[0,1], scale:[0.2,1], rotate:[-6,0],
+    duration:900, easing:'easeOutBack' }, bloomStart);
+  tl.add({ targets: tierMid, opacity:[0,1], scale:[0.2,1], rotate:[8,0],
+    duration:920, easing:'easeOutBack' }, bloomStart+100);
+  tl.add({ targets: tierOuter, opacity:[0,1], scale:[0.2,1], rotate:[-10,0],
+    duration:940, easing:'easeOutBack' }, bloomStart+200);
+
+  // per-petal variation, layered on top of each tier's own tween (not
+  // instead of it): one shared tween per tier targeting every .js-petal
+  // in it via function-based values read from that petal's own baked
+  // data attributes — still 3 tl.add() calls total here, not 48. This is
+  // what keeps the bloom from reading as "3 rigid layers zooming out":
+  // each petal settles from its own small scale/rotation offset (and its
+  // own slightly-offset pivot point, baked into transform-origin at
+  // render time) into the tier's shared final shape, on one of 3 micro-
+  // delay bands rather than either perfect unison or 48 individual times.
+  var petalBandMs = 55;
+  var petalDelay = function(el){ return parseInt(el.getAttribute('data-delay-band'), 10) * petalBandMs; };
+  var petalTween = function(el){ return [parseFloat(el.getAttribute('data-scale-start')), 1]; };
+  var petalRotTween = function(el){ return [parseFloat(el.getAttribute('data-rot-jitter')), 0]; };
+  tl.add({ targets: tierInner.querySelectorAll('.js-petal'), scale: petalTween, rotate: petalRotTween,
+    duration:760, easing:'easeOutSine', delay: petalDelay }, bloomStart);
+  tl.add({ targets: tierMid.querySelectorAll('.js-petal'), scale: petalTween, rotate: petalRotTween,
+    duration:780, easing:'easeOutSine', delay: petalDelay }, bloomStart+100);
+  tl.add({ targets: tierOuter.querySelectorAll('.js-petal'), scale: petalTween, rotate: petalRotTween,
+    duration:800, easing:'easeOutSine', delay: petalDelay }, bloomStart+200);
+
+  // motion 3: typography resolves while the outer tier is still mid-way
+  // through its own settle-overshoot (outer runs bloomStart+200 .. +1140;
+  // text starts well inside that window), not after everything stops.
+  var textStart = bloomStart + 200 + 420;
+  tl.add({ targets: flowerText, opacity:[0,1], translateY:[8,0], duration:400, easing:'easeOutCubic' }, textStart);
+  tl.add({ targets: letter, opacity:[0,1], translateY:[8,0], duration:400, easing:'easeOutCubic' }, textStart+220);
+  tl.add({ targets: again, opacity:[0,0.85], duration:300, easing:'easeOutCubic' }, textStart+440);
+
+  // testing hook: pause the fully-built timeline at t=0, only when a test
+  // harness asked for it — lets the harness seek() to an exact stage.
+  if (window.__PEONY_TEST_PAUSE__){ tl.pause(); tl.seek(0); }
+
+  tl.finished.then(function(){
+    window.__mirrorEntranceMs = Math.round(performance.now() - t0);
+    document.dispatchEvent(new CustomEvent('mirror:entrance-done', { detail:{ ms: window.__mirrorEntranceMs } }));
+    showNote(true);
+  });
+}
+
+function renderArt(sp){
+  var cx = 110, cy = 112;
+  var svg = gradDefs(sp);
+  if (sp.type !== 'spike') svg += stemAndLeaves(sp);
+  switch(sp.type){
+    case 'layered': svg += layeredArt(cx,cy,sp); break;
+    case 'phyllo':  svg += phylloBloom(cx,cy,sp); break;
+    case 'mophead': svg += mopheadArt(cx,cy,sp); break;
+    case 'orchid':  svg += orchidArt(cx,cy,sp); break;
+    case 'spike':   svg += spikeArt(cx,cy,sp); break;
+  }
+  return svg;
+}
+
+// ---- the flower collection (vertical slice: 6 of the eventual ~30) ----
+
+var FLOWERS = [
+  { id:0, name:'Peonies', meaning:'romance, honor, a happy life together', type:'phyllo', choreo:'radial',
+    c:{ deep:'#a8506a', light:'#f0c3d3', center:'#f6e2b8', centerEdge:'#e0b878' },
+    calyx:{ deep:'#5c7a52', light:'#9ab088' },
+    stem:{ x1:72, y1:360, x2:150, y2:82, bow:30, width:3.8, color:'#7a8f6e', leafColor:'#6f8564',
+           leaves:[ {t:0.34,len:28,width:12,curve:1,rot:-120}, {t:0.64,len:24,width:10,curve:0.95,rot:66} ] },
+    bud:{ cx:150, cy:84, len:54, w:34 },
+    bloom:{ count:48, spread:17, petalLen:36, petalW:26, rotSeed:12 },
+    center:{ r:4.6, texture:true, textureCount:12, textureColor:'#a8763a' } },
+
+  { id:1, name:'Tulips', meaning:'a perfect, declared love', type:'layered', choreo:'cupDraw',
+    c:{ deep:'#93233a', light:'#df6272', deep2:'#a3283f', light2:'#e8798a', center:null },
+    stem:{ y1:118, x2:112, y2:248, bow:-6, width:3.4, color:'#6f8f5c', leafColor:'#63824f',
+           leaves:[ {t:0.3,len:34,width:12,curve:1.3,rot:-108} ] },
+    layers:[
+      { count:3, radius:3, len:58, baseW:21, curveL:1.3, curveR:1.05, tipRound:0.3, rot:-62, spread:124, jitter:[0,-2,2] },
+      { count:3, radius:2, len:50, baseW:18, curveL:1.05, curveR:1.3, tipRound:0.3, rot:-40, spread:80, jitter:[2,0,-2] }
+    ] },
+
+  { id:2, name:'Orchids', meaning:'rare and refined beauty', type:'orchid', choreo:'bilateral',
+    c:{ deep:'#7d4a9e', light:'#c9a0dc', deep2:'#6a3d86', light2:'#b98fce', lip:'#8a2f6b', lipMark:'#f2d9a8', column:'#f2d9a8' },
+    dims:{ sepalLen:32, sepalW:9, petalLen:30, petalW:14, lipDrop:14, lipW:24, lipLen:26 },
+    stem:{ y1:156, x2:118, y2:248, bow:12, width:2.4, color:'#5c7a5c', leafColor:'#517050',
+           leaves:[ {t:0.55,len:26,width:8,curve:0.8,rot:100} ] } },
+
+  { id:3, name:'Hydrangeas', meaning:'heartfelt gratitude', type:'mophead', choreo:'populate', floretStagger:15,
+    c:{ deep:'#5d6f9e', light:'#a9b7d9' },
+    stem:{ y1:158, x2:110, y2:248, bow:0, width:4, color:'#4f6b3f', leafColor:'#476338',
+           leaves:[ {t:0.4,len:30,width:16,curve:1.1,rot:-118}, {t:0.7,len:26,width:14,curve:1.1,rot:112} ] },
+    florets:{ count:34, spread:46, domeLift:10, petalLen:8, petalW:6, centerColor:'#e8dca0',
+              hues:['#7f9bc7','#9a8ac9','#8fa8d4','#a893cf','#87a0cc'] } },
+
+  { id:4, name:'Lavender', meaning:'devotion, and quiet calm', type:'spike', choreo:'populate', floretStagger:36,
+    c:{ deep:'#6f5f96', light:'#a89bc4', deep2:'#5c4d82', light2:'#948aad' },
+    stem:{ y1:0, x2:0, y2:0, bow:0, width:0, color:'', leafColor:'#8a9a7a', leaves:[] },
+    spike:{ startY:68, endY:-76, bow1:-2, bow2:3, dx:0, stemColor:'#8a9a7a',
+            count:15, floretLen:11, floretW:8, spread:20, taper:true } },
+
+  { id:5, name:'Wisteria', meaning:'devotion that keeps growing', type:'spike', choreo:'populate', floretStagger:38,
+    c:{ deep:'#5c4a8a', light:'#b7a3d9', deep2:'#6f5a9e', light2:'#c3b2e0' },
+    stem:{ y1:0, x2:0, y2:0, bow:0, width:0, color:'', leafColor:'#5c7a4e', leaves:[] },
+    spike:{ startY:-64, endY:70, bow1:10, bow2:-6, dx:6, stemColor:'#7a9a5c',
+            count:14, floretLen:17, floretW:12, spread:34, taper:true } }
+];
+
+// ---- rotation math ----
+
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededOrder(seed){
+  var rnd = mulberry32(seed);
+  var arr = FLOWERS.map(function(_, i){ return i; });
+  for (var i = arr.length - 1; i > 0; i--){
+    var j = Math.floor(rnd() * (i + 1));
+    var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+
+var CYCLE_SEED_SALT = 0x9E3779B9;
+var cycleOrderCache = {};
+function fixedCycleOrder(cycleIndex){
+  if (cycleOrderCache[cycleIndex]) return cycleOrderCache[cycleIndex];
+  var order = seededOrder((cycleIndex * 0x1000193 + CYCLE_SEED_SALT) >>> 0);
+  if (cycleIndex > 0){
+    var prevOrder = fixedCycleOrder(cycleIndex - 1);
+    var prevLast = prevOrder[prevOrder.length - 1];
+    if (order[0] === prevLast){
+      order = order.slice(1).concat(order.slice(0, 1));
+    }
+  }
+  cycleOrderCache[cycleIndex] = order;
+  return order;
+}
+
+function parseLocalDateParts(d){
+  return { y: d.getFullYear(), m: d.getMonth(), day: d.getDate() };
+}
+
+function localDaysBetween(fromParts, toParts){
+  var fromUTC = Date.UTC(fromParts.y, fromParts.m, fromParts.day);
+  var toUTC = Date.UTC(toParts.y, toParts.m, toParts.day);
+  return Math.round((toUTC - fromUTC) / 86400000);
+}
+
+function getFeaturedFlower(now){
+  var launch = parseLocalDateParts(new Date(MIRROR_LAUNCH_DATE + 'T00:00:00'));
+  var today = parseLocalDateParts(now || new Date());
+  var dayIndex = localDaysBetween(launch, today);
+  if (dayIndex < 0) dayIndex = 0;
+  var periodIndex = Math.floor(dayIndex / 3);
+  var cycleIndex = Math.floor(periodIndex / FLOWERS.length);
+  var positionInCycle = periodIndex % FLOWERS.length;
+  var order = fixedCycleOrder(cycleIndex);
+  return FLOWERS[order[positionInCycle]];
+}
+
+/* =========================================================================
+   ENTRANCE ANIMATION — one-shot, ~2-2.3s, never loops. Anime.js only
+   (vendored locally, no CDN). Respects prefers-reduced-motion by skipping
+   straight to the fully-formed flower. Every hidden/initial state is baked
+   into the SVG markup itself (inline style / fill-opacity) so there is no
+   flash of the finished flower before the timeline takes over.
+   ========================================================================= */
+
+var REDUCE_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function toArray(nodeList){ return Array.prototype.slice.call(nodeList); }
+
+function setFinalFlowerState(svg){
+  var stemPath = svg.querySelector('#stemPath');
+  if (stemPath){ stemPath.style.strokeDasharray = 'none'; stemPath.style.strokeDashoffset = 0; }
+  toArray(svg.querySelectorAll('.js-leaf')).forEach(function(el){ el.style.transform = 'scale(1)'; });
+  toArray(svg.querySelectorAll('.js-petal-pop, .js-floret-pop, .js-center-pop')).forEach(function(el){
+    el.style.transform = 'scale(1)';
+  });
+  toArray(svg.querySelectorAll('.js-orchid-part')).forEach(function(el){
+    el.style.opacity = 1; el.style.transform = 'rotate(' + el.getAttribute('data-final-rot') + 'deg)';
+  });
+  toArray(svg.querySelectorAll('.js-petal-draw')).forEach(function(el){
+    el.style.strokeDashoffset = 0; el.setAttribute('fill-opacity','1');
+  });
+}
+
+function playEntrance(sp){
+  var svg = document.getElementById('bloom');
+  var nameEl = document.getElementById('flowerName');
+  var meaningEl = document.getElementById('flowerMeaning');
+
+  if (REDUCE_MOTION){
+    setFinalFlowerState(svg);
+    showNote(true);
+    return;
+  }
+
+  var stemPath = svg.querySelector('#stemPath');
+  var leaves = toArray(svg.querySelectorAll('.js-leaf'));
+  var t0 = performance.now();
+
+  var tl = anime.timeline({ easing:'easeOutCubic' });
+
+  if (stemPath){
+    tl.add({ targets: stemPath, strokeDashoffset:[anime.setDashoffset,0], easing:'easeInOutSine', duration:460 }, 0);
+  }
+  if (leaves.length){
+    tl.add({ targets: leaves, scale:[0.12,1], easing:'easeOutBack', duration:440, delay: anime.stagger(100) }, 300);
+  }
+
+  var bloomStart = leaves.length ? 680 : 520;
+  var bloomSpan = 900;
+
+  if (sp.choreo === 'radial'){
+    tl.add({ targets: svg.querySelectorAll('.js-center-pop'), scale:[0,1], duration:260, easing:'easeOutBack' }, bloomStart);
+    tl.add({ targets: svg.querySelectorAll('.js-petal-pop'), scale:[0,1], duration:480, easing:'easeOutBack',
+      delay: function(el){ return parseFloat(el.getAttribute('data-t'))*340; } }, bloomStart);
+    bloomSpan = 340 + 480;
+  } else if (sp.choreo === 'cupDraw'){
+    var petals = svg.querySelectorAll('.js-petal-draw');
+    tl.add({ targets: petals, strokeDashoffset:[anime.setDashoffset,0], duration:380, easing:'easeInOutSine',
+      delay: anime.stagger(90) }, bloomStart);
+    tl.add({ targets: petals, fillOpacity:[0,1], duration:440, easing:'easeOutSine',
+      delay: anime.stagger(80) }, bloomStart+280);
+    bloomSpan = 280 + 80*(petals.length-1) + 440;
+  } else if (sp.choreo === 'bilateral'){
+    var sepals = svg.querySelectorAll('.js-orchid-part.sepal');
+    var petalsB = svg.querySelectorAll('.js-orchid-part.petal');
+    var lip = svg.querySelectorAll('.js-petal-pop.lip');
+    tl.add({ targets: sepals, opacity:[0,1],
+      rotate: function(el){ return [parseFloat(el.getAttribute('data-fold-rot')), parseFloat(el.getAttribute('data-final-rot'))]; },
+      duration:380, easing:'easeOutSine', delay: anime.stagger(70) }, bloomStart);
+    tl.add({ targets: petalsB, opacity:[0,1],
+      rotate: function(el){ return [parseFloat(el.getAttribute('data-fold-rot')), parseFloat(el.getAttribute('data-final-rot'))]; },
+      duration:500, easing:'easeOutBack', delay: anime.stagger(90) }, bloomStart+140);
+    tl.add({ targets: lip, scale:[0,1], duration:420, easing:'easeOutBack' }, bloomStart+520);
+    bloomSpan = 520 + 420;
+  } else if (sp.choreo === 'populate'){
+    var florets = svg.querySelectorAll('.js-floret-pop');
+    var stagger = sp.floretStagger || 30;
+    tl.add({ targets: florets, scale:[0,1], duration:400, easing:'easeOutBack',
+      delay: anime.stagger(stagger) }, bloomStart);
+    bloomSpan = stagger*(florets.length-1) + 400;
+  }
+
+  var textStart = bloomStart + bloomSpan;
+  tl.add({ targets: [nameEl, meaningEl], opacity:[0,1], translateY:[6,0], duration:380, easing:'easeOutCubic',
+    delay: anime.stagger(70) }, textStart);
+
+  tl.finished.then(function(){
+    window.__mirrorEntranceMs = Math.round(performance.now() - t0);
+    document.dispatchEvent(new CustomEvent('mirror:entrance-done', { detail:{ ms: window.__mirrorEntranceMs } }));
+    showNote(true);
+  });
+}
+
+// NOTE: initFlower() is defined here but not called until the very bottom
+// of this script, after the note deck (NOTES/showNote/etc.) is defined.
+// playEntrance() can call showNote(true) synchronously (the reduced-motion
+// path does, unlike the animated path which defers it via a Promise), so
+// NOTES must already exist by the time initFlower() actually runs.
+function initFlower(){
+  var sp = getFeaturedFlower();
+  var svgEl = document.getElementById('bloom');
+  document.getElementById('flowerName').textContent = sp.name;
+  document.getElementById('flowerMeaning').textContent = sp.meaning;
+  if (sp.id === 0){
+    // Peony: simplified illustration entrance — see renderPeonySimple /
+    // playPeonySimple above.
+    svgEl.setAttribute('viewBox', '0 0 240 380');
+    svgEl.innerHTML = renderPeonySimple(sp);
+    playPeonySimple(sp);
+  } else {
+    // Unchanged: the other 5 species still use the procedural SVG path.
+    svgEl.setAttribute('viewBox', '0 0 220 260');
+    svgEl.innerHTML = renderArt(sp);
+    playEntrance(sp);
+  }
+}
+
+/* =========================================================================
+   LOVE NOTE DECK — unchanged from the original Morning Mirror. Independent
+   of the flower logic above: no shared state, no shared functions. The
+   only change from before is *when* showNote(true) is first called — now
+   triggered at the end of the flower entrance (see playEntrance above)
+   instead of immediately on load, so the note is the last thing to appear.
+   ========================================================================= */
+
+var NOTES = [
+  "You make ordinary mornings feel like they're worth getting up for.",
+  "I don't say it enough: you're the best part of my day, every single day.",
+  "Whatever's on your plate today, you've got this. You always do.",
+  "I love the way your face changes right before you laugh at your own joke.",
+  "Somewhere out there, past-me is really glad I walked up and said hi.",
+  "You're the person I want to tell things to first. Still. Always.",
+  "Today's forecast: mostly you, with a chance of me showing up with your favorite snack.",
+  "I noticed. Whatever it was you did that you thought no one saw — I noticed.",
+  "You handle hard days better than you give yourself credit for.",
+  "If I had to pick this same life again, I'd pick the version with you in it.",
+  "Go be brilliant today. I'll be here when you're done.",
+  "You are, annoyingly, always right about how long the coffee actually takes to cool.",
+  "I like you more today than the day I met you, and I liked you a lot that day.",
+  "Whatever this mirror says, the real one's better looking.",
+  "Someone out there is lucky to know you. That's me. I'm someone.",
+  "You're allowed to have an easy day too, you know.",
+  "I saved you the last of the good snacks. Don't tell anyone.",
+  "Your bad jokes are, objectively, the best bad jokes I've ever heard.",
+  "Take the compliment. You worked hard for it.",
+  "You make hard things feel a little more possible, just by being around.",
+  "I'm proud of you, for reasons you probably don't think are a big deal. They are.",
+  "Drink some water. Also, you're wonderful. Both things are true.",
+  "You have the kind of laugh that makes other people start laughing too.",
+  "Even on your worst day, you're still someone's favorite person. Mine.",
+  "This is your sign to be a little kinder to yourself today.",
+  "I like our life. I like it a lot. Thanks for building it with me.",
+  "You're doing better than you think you are.",
+  "One day I'll stop being obvious about how much I like you. Today is not that day."
+];
+
+var DECK_KEY = 'mm_deck';
+
+function loadDeck(){
+  try{
+    var raw = localStorage.getItem(DECK_KEY);
+    var deck = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(deck) || deck.length === 0) deck = reshuffle();
+    return deck;
+  } catch(e){ return shuffled(NOTES.map(function(_,i){return i;})); }
+}
+
+function shuffled(arr){
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+function reshuffle(){
+  var deck = shuffled(NOTES.map(function(_,i){return i;}));
+  try{ localStorage.setItem(DECK_KEY, JSON.stringify(deck)); } catch(e){}
+  return deck;
+}
+
+function draw(){
+  var deck = loadDeck();
+  var idx = deck.shift();
+  if (deck.length === 0) deck = reshuffle();
+  try{ localStorage.setItem(DECK_KEY, JSON.stringify(deck)); } catch(e){}
+  return NOTES[idx];
+}
+
+var noteEl = document.getElementById('note');
+
+function showNote(first){
+  var text = draw();
+  if (first || REDUCE_MOTION){
+    noteEl.textContent = text;
+    return;
+  }
+  noteEl.classList.add('turning');
+  setTimeout(function(){
+    noteEl.textContent = text;
+    noteEl.classList.remove('turning');
+  }, 220);
+}
+
+document.getElementById('again').addEventListener('click', function(){ showNote(false); });
+
+function setDateLabel(){
+  var el = document.getElementById('thisDate');
+  if (!el) return;
+  try{
+    el.textContent = ' · ' + new Date().toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  } catch(e){}
+}
+
+function startExperience(){
+  setDateLabel();
+  initFlower();
+}
+
+// Gate the entrance start on fonts actually being ready, so text never
+// re-flows to Fraunces mid-animation (the stylesheet uses display:swap).
+// document.fonts.ready resolves once in-flight font fetches settle; it's
+// raced against a short timeout so an unreachable font host can never hold
+// the entrance hostage — this exact failure mode (Google Fonts unreachable,
+// 13s stall) was hit once in a sandboxed test environment for this project.
+// Reduced motion skips the wait entirely: it renders the final state
+// instantly, so there's no mid-entrance swap to protect against.
+if (REDUCE_MOTION || !(window.document && document.fonts && document.fonts.ready)){
+  startExperience();
+} else {
+  var startedOnce = false;
+  var start = function(){ if (startedOnce) return; startedOnce = true; startExperience(); };
+  document.fonts.ready.then(start).catch(start);
+  setTimeout(start, 800);
+}
+</script>
+</body>
+</html>
