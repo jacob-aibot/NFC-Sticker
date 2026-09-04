@@ -1792,7 +1792,16 @@ function loadDeck(){
   try{
     var raw = localStorage.getItem(DECK_KEY);
     var deck = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(deck) || deck.length === 0) deck = reshuffle();
+    if (!Array.isArray(deck)) deck = [];
+    // A stored deck holds indices into NOTES, so it goes stale whenever NOTES
+    // is edited: shrink or reorder the array and a returning visitor's saved
+    // indices can point past the end, which used to render the string
+    // "undefined". Drop anything out of range and reshuffle if nothing valid
+    // is left. Appending new notes stays safe either way.
+    deck = deck.filter(function(i){
+      return typeof i === 'number' && Math.floor(i) === i && i >= 0 && i < NOTES.length;
+    });
+    if (deck.length === 0) deck = reshuffle();
     return deck;
   } catch(e){ return shuffled(NOTES.map(function(_,i){return i;})); }
 }
