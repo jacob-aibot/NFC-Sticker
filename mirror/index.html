@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#211823">
+<meta name="theme-color" content="#4a3b3a">
 <title>Morning Mirror</title>
 <meta name="description" content="A featured flower that grows in and changes every three days, and a tap-to-reveal note — a fresh line every time, cycling through without repeats.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%AA%9E%3C/text%3E%3C/svg%3E">
@@ -22,23 +22,24 @@
 <style>
   :root{
     color-scheme: dark;
-    --ink: #211823;
-    --ink-2: #2c2130;
-    --ink-3: #37283c;
-    --paper: #f6ece4;
-    --paper-dim: #cdbdc4;
-    --accent: #e3a34e;
-    --accent-soft: #c97b9c;
-    --muted: #9c8a97;
+    --ink: #4a3b3a;
+    --ink-night: #20191f;
+    --ink-2: #30252d;
+    --ink-3: #3a2d36;
+    --paper: #f7eee7;
+    --paper-dim: #d8c9c6;
+    --accent: #d9ad82;
+    --accent-soft: #d792a8;
+    --muted: #b7a6aa;
     --line: rgba(246,236,228,0.14);
   }
 
   *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
 
-  html{ background: var(--ink); }
+  html{ background: var(--ink-night); }
 
   body{
-    background: var(--ink);
+    background: var(--ink-night);
     color: var(--paper);
     min-height: 100dvh;
     margin:0;
@@ -52,9 +53,23 @@
     inset:0;
     pointer-events:none;
     z-index:0;
+    opacity:0;
     background:
-      radial-gradient(55% 42% at 30% 14%, rgba(227,163,78,0.17), transparent 68%),
-      radial-gradient(60% 46% at 82% 82%, rgba(201,123,156,0.13), transparent 72%);
+      radial-gradient(112% 78% at -12% -8%, rgba(255,231,194,0.56), transparent 69%),
+      radial-gradient(88% 58% at 25% 14%, rgba(244,193,165,0.28), transparent 75%),
+      linear-gradient(180deg, rgba(132,94,86,0.17), rgba(104,74,73,0.08) 58%, transparent 84%);
+  }
+
+  .ambient::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    background:
+      radial-gradient(circle at -8% -7%, rgba(255,250,220,.92) 0%, rgba(255,231,186,.54) 17%, rgba(244,194,158,.20) 37%, transparent 64%),
+      linear-gradient(132deg, rgba(255,243,211,.34) 0%, rgba(255,225,183,.14) 24%, transparent 49%),
+      linear-gradient(151deg, transparent 3%, rgba(255,240,205,.18) 13%, transparent 31%);
+    filter:blur(12px);
+    opacity:.96;
   }
 
   /* extremely subtle grain over the dark ground — filter:url() SVG turbulence
@@ -69,146 +84,193 @@
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* full-bleed, no card chrome — the dark ground itself is the composition.
-     Centered as a group (not pinned to the bottom via margin-top:auto) so
-     the flower and letter form one tight composition instead of two zones
-     with dead space between; env() insets keep it clear of the notch/home
-     indicator when this is ever opened as a saved full-screen page. */
+  /* One full-screen editorial canvas. The Peony is deliberately allowed to
+     run beyond its nominal zone so it feels immersive rather than framed. */
   .scene{
     position:relative;
     z-index:1;
-    min-height:100dvh;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    padding:
-      calc(4.5vh + env(safe-area-inset-top))
-      max(7.5vw, env(safe-area-inset-left))
-      calc(4.5vh + env(safe-area-inset-bottom))
-      max(7.5vw, env(safe-area-inset-right));
+    height:100dvh;
+    min-height:620px;
+    overflow:hidden;
   }
 
-  .composition{
-    display:flex;
-    flex-direction:column;
+  .opener{
+    position:absolute;
+    z-index:3;
+    top:calc(5.9vh + env(safe-area-inset-top));
+    left:max(8.2vw, env(safe-area-inset-left));
+    margin:0;
+    font-family:'Fraunces', Georgia, serif;
+    font-size:1rem;
+    font-style:italic;
+    color:var(--paper-dim);
+    letter-spacing:0.015em;
+    text-shadow:0 1px 10px rgba(48,32,39,.72);
   }
 
   /* --- featured flower --- */
 
   .bloom-zone{
-    position:relative;
+    position:absolute;
+    z-index:1;
+    inset:0;
     perspective: 640px;
-    margin-bottom: -0.3rem;
+  }
+
+  .bloom-zone::after{
+    content:'';
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    z-index:2;
+    background:linear-gradient(132deg, rgba(255,245,215,.20) 0%, rgba(255,224,182,.07) 28%, transparent 53%);
+    mix-blend-mode:screen;
+    opacity:.72;
+  }
+
+  .plant-layer{
+    position:absolute;
+    inset:0;
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center top;
+    transform:translateY(3.8vh);
+    transform-origin:center top;
+    pointer-events:none;
+  }
+
+  .plant-stem{
+    -webkit-mask-image:linear-gradient(to bottom, transparent 44%, #000 56%);
+    -webkit-mask-size:100% 200%;
+    -webkit-mask-position:0 0;
+    -webkit-mask-repeat:no-repeat;
+    mask-image:linear-gradient(to bottom, transparent 44%, #000 56%);
+    mask-size:100% 200%;
+    mask-position:0 0;
+    mask-repeat:no-repeat;
+    mix-blend-mode:lighten;
+  }
+
+  .plant-bloom{
+    clip-path:ellipse(60% 30% at 52% 23%);
+    opacity:0;
+    transform:translateY(3.8vh) scale(0.24) rotate(-2deg);
+    transform-origin:52% 24%;
+    mix-blend-mode:lighten;
+  }
+
+  .plant-full{
+    opacity:0;
+    transform:translateY(3.8vh) scale(1.12);
+    transform-origin:52% 24%;
+    -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 22%, #000 78%, transparent 100%);
+    mask-image:linear-gradient(90deg, transparent 0, #000 22%, #000 78%, transparent 100%);
   }
 
   .bloom{
     display:block;
-    /* capped by vh too, not just vw/px — the viewBox is tall (240x380), so
-       on a short iPhone (e.g. 375x667) an 84vw-wide flower renders ~500px
-       tall and pushes "one more" off-screen; the vh cap shrinks the flower
-       on short screens instead of forcing a scroll to reach it. */
-    width: min(84vw, 320px, 39vh);
-    height:auto;
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
     overflow: visible;
-    filter: drop-shadow(0 20px 32px rgba(0,0,0,0.5));
+    transform:translateY(3.8vh) scale(1.05);
+    transform-origin:52% 24%;
+    filter:drop-shadow(0 22px 38px rgba(8,4,8,0.28));
   }
 
-  /* name + meaning float in the bloom's own negative space, not a label row */
-  /* sits beside the stem, not the bloom canopy — the peony's petals are
-     round enough near the top that no position beside them clears the
-     text; the stem below is narrow and has real open space beside it. */
+  .paint-piece, .petal-group, .illustrated-leaf{
+    transform-box:view-box;
+    will-change:transform, opacity;
+  }
+
+  .petal-group{
+    filter:drop-shadow(0 4px 4px rgba(55,17,33,0.34));
+  }
+
+  .photo-piece{
+    transform-box:view-box;
+    will-change:transform, opacity;
+  }
+
+  .photo-paint{
+    mix-blend-mode:normal;
+  }
+
+  /* Flower identity is a whispered detail beneath the actual note. */
   .flower-text{
-    position:absolute;
-    right:0;
-    top:40%;
-    max-width:46%;
-    text-align:right;
+    display:flex;
+    align-items:baseline;
+    justify-content:center;
+    gap:0.28rem;
+    margin-top:0.9rem;
     opacity:0;
-    transform:translateY(8px);
+    transform:translateY(5px);
+    color:var(--muted);
   }
 
   .flower-name{
-    font-family:'Fraunces', Georgia, serif;
-    font-weight: 500;
-    font-size: clamp(1.55rem, 7.4vw, 2rem);
-    line-height:1.05;
-    color: var(--paper);
-    margin: 0 0 0.5rem;
+    font-family:'Archivo', ui-sans-serif, sans-serif;
+    font-weight:500;
+    font-size:0.7rem;
+    line-height:1.2;
+    color:var(--accent-soft);
+    margin:0;
+    letter-spacing:0.04em;
   }
 
-  /* an elegant caption, not a metadata row — italic serif, the same family
-     as the letter's sign-off, not a small muted sans-serif label. */
+  .flower-name::after{ content:' ·'; color:var(--muted); }
+
   .flower-meaning{
     font-family:'Fraunces', Georgia, serif;
     font-style: italic;
     font-weight: 400;
-    font-size: 0.85rem;
-    line-height:1.5;
-    color: var(--muted);
-    margin: 0;
+    font-size:0.72rem;
+    line-height:1.2;
+    color:var(--muted);
+    margin:0;
   }
 
-  /* the note reads as a letter: quiet, generous, no boxed divider — pulled
-     close under the flower rather than pushed to the bottom of the screen */
+  /* The note is the only typographic focal point after the flower. */
   .letter{
-    padding-top: 0.5rem;
-    max-width: 26rem;
-    display:flex;
-    flex-direction:column;
+    position:absolute;
+    z-index:3;
+    left:max(8.2vw, env(safe-area-inset-left));
+    right:max(8.2vw, env(safe-area-inset-right));
+    top:71.5%;
+    text-align:center;
     opacity:0;
-    transform:translateY(8px);
-  }
-
-  /* a letter's dateline, not a UI kicker — italic serif instead of a bold
-     uppercase accent-colored label */
-  .eyebrow{
-    font-family:'Fraunces', Georgia, serif;
-    font-style: italic;
-    font-weight: 400;
-    font-size: 0.85rem;
-    letter-spacing: 0.01em;
-    text-transform:none;
-    color: var(--muted);
-    margin: 0 0 0.7rem;
-  }
-
-  .eyebrow .date{
-    color: var(--accent-soft);
+    transform:translateY(10px);
   }
 
   .note{
     font-family:'Fraunces', Georgia, 'Iowan Old Style', serif;
     font-optical-sizing:auto;
-    font-weight: 420;
-    font-size: clamp(1.28rem, 5.6vw, 1.6rem);
-    line-height: 1.5;
-    letter-spacing: 0.002em;
-    text-wrap: balance;
+    font-weight:400;
+    font-size:clamp(1.72rem, 7.45vw, 1.95rem);
+    line-height:1.12;
+    letter-spacing:-0.015em;
     color: var(--paper);
     margin: 0;
+    text-shadow:0 2px 18px rgba(20,13,18,0.38);
     transition: opacity .35s ease;
   }
 
   .note.turning{ opacity: 0; }
 
-  .sign{
-    font-size: 0.82rem;
-    color: var(--muted);
-    font-style: italic;
-    font-family:'Fraunces', Georgia, serif;
-    margin-top: 0.6rem;
-  }
-
   /* explicit tap target, visually quiet: the visible text stays small, but
      the hit area is a full 44px tall via padding + flex centering, not the
      text's own line box. */
   .again{
+    position:absolute;
+    z-index:4;
+    right:max(6.3vw, env(safe-area-inset-right));
+    bottom:calc(2.6vh + env(safe-area-inset-bottom));
     appearance:none;
     background:none;
     border:none;
-    align-self:flex-end;
-    margin-top: 1.2rem;
-    margin-right: -0.2rem;
     display:inline-flex;
     align-items:center;
     min-height: 44px;
@@ -218,7 +280,9 @@
     letter-spacing: 0.12em;
     text-transform:lowercase;
     font-weight:600;
-    padding: 0.5rem 0.2rem;
+    justify-content:flex-end;
+    min-width:96px;
+    padding:0.65rem 0.15rem;
     cursor:pointer;
     opacity:0;
   }
@@ -228,29 +292,37 @@
   @media (prefers-reduced-motion: reduce){
     .note{ transition:none; }
     .flower-text, .letter, .again{ opacity:1; transform:none; }
+    .ambient{ opacity:1; }
+    body{ background:var(--ink); }
+    .plant-stem, .plant-bloom{ display:none; }
+    .plant-full{ opacity:1; transform:translateY(-1.5vh) scale(0.80); }
+    .bloom{ transform:translateY(-1.5vh) scale(0.80); }
+  }
+
+  @media (max-height:700px){
+    .bloom-zone{ inset:0; }
+    .letter{ top:70%; }
+    .note{ font-size:1.72rem; }
   }
 </style>
 </head>
 <body>
 
-<div class="ambient"></div>
+<div class="ambient" id="morningLight"></div>
 <div class="scene">
-  <div class="composition">
-    <div class="bloom-zone">
-      <svg class="bloom" id="bloom" viewBox="0 0 220 260" role="img" aria-labelledby="bloomTitle"></svg>
-      <div class="flower-text">
-        <p class="flower-name" id="flowerName">&nbsp;</p>
-        <p class="flower-meaning" id="flowerMeaning">&nbsp;</p>
-      </div>
-    </div>
+  <p class="opener">for you.</p>
+  <div class="bloom-zone">
+    <svg class="bloom" id="bloom" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid meet" role="img" aria-label="A lush illustrated Peony growing and opening"></svg>
+  </div>
 
-    <div class="letter">
-      <p class="eyebrow">This morning<span class="date" id="thisDate"></span></p>
-      <p class="note" id="note">Loading…</p>
-      <p class="sign" id="sign">— for you</p>
-      <button class="again" id="again" type="button">one more →</button>
+  <div class="letter">
+    <p class="note" id="note">you make ordinary days<br>my favorite ones.</p>
+    <div class="flower-text">
+      <p class="flower-name" id="flowerName">peony</p>
+      <p class="flower-meaning" id="flowerMeaning">devotion &amp; happy love</p>
     </div>
   </div>
+  <button class="again" id="again" type="button">one more →</button>
 </div>
 
 <script src="vendor/anime.min.js"></script>
@@ -693,7 +765,7 @@ function renderPeonyStemLeaves(sp){
     var rxFinal = ((i%2) ? 1 : -1) * (16 + (i*7)%16);
     out += '<g transform="translate('+base[0]+','+base[1]+') rotate('+L.rot+')">' +
              '<g class="js-leaf" data-ry-furled="'+ryFurled+'" data-ry-final="'+ryFinal+'" data-rx-final="'+rxFinal+'" ' +
-                'style="transform-origin:0px 0px; transform:rotateY('+ryFurled+'deg) rotateX(0deg) scaleY(0.16) scaleX(0.3);">' +
+                'style="opacity:0; transform-origin:0px 0px; transform:rotateY('+ryFurled+'deg) rotateX(0deg) scaleY(0.16) scaleX(0.3);">' +
                '<path d="'+d+'" fill="'+s.leafColor+'" stroke="'+stroke+'" stroke-width="0.5" stroke-opacity="0.4"/>' +
              '</g>' +
            '</g>';
@@ -815,12 +887,121 @@ function renderPeonySimple(sp){
   return svg;
 }
 
+// Static art-direction checkpoint. Unlike the earlier phyllotaxis renderer,
+// this is a deliberately composed illustration: every visible petal and leaf
+// has its own silhouette, placement and occlusion role. Animation classes are
+// intentionally absent until this final-state drawing is approved.
+function renderPeonyIllustration(){
+  return '<defs>' +
+    '<linearGradient id="stemPaint" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#53613e"/><stop offset="0.5" stop-color="#788351"/><stop offset="1" stop-color="#a09a61"/></linearGradient>' +
+    '<linearGradient id="leafPaint" x1="0" y1="1" x2="0.9" y2="0"><stop stop-color="#465337"/><stop offset="0.55" stop-color="#73804e"/><stop offset="1" stop-color="#a6a266"/></linearGradient>' +
+    '<linearGradient id="petalBack" x1="0.15" y1="0.9" x2="0.8" y2="0"><stop stop-color="#9e455c"/><stop offset="0.58" stop-color="#cc6f83"/><stop offset="1" stop-color="#e9a6ad"/></linearGradient>' +
+    '<linearGradient id="petalMid" x1="0.1" y1="0.9" x2="0.85" y2="0.05"><stop stop-color="#ad4d66"/><stop offset="0.5" stop-color="#dc8292"/><stop offset="1" stop-color="#f2b7ba"/></linearGradient>' +
+    '<linearGradient id="petalFace" x1="0.2" y1="1" x2="0.75" y2="0"><stop stop-color="#c76178"/><stop offset="0.52" stop-color="#eca0aa"/><stop offset="1" stop-color="#f8d0c9"/></linearGradient>' +
+    '<linearGradient id="petalLight" x1="0" y1="1" x2="0.65" y2="0"><stop stop-color="#db7e91"/><stop offset="1" stop-color="#f8d8ce"/></linearGradient>' +
+    '<radialGradient id="centerPaint"><stop stop-color="#d89b68"/><stop offset="0.45" stop-color="#a94e58"/><stop offset="1" stop-color="#732e43"/></radialGradient>' +
+  '</defs>' +
+
+  /* graceful stem, then broad individually drawn leaves */
+  '<path d="M29 379 C28 333 43 299 61 268 C82 232 100 197 111 161 C119 137 130 121 145 109" fill="none" stroke="#3f4933" stroke-width="7.2" stroke-linecap="round" opacity=".42"/>' +
+  '<path d="M31 379 C31 334 45 300 63 269 C83 234 101 198 113 162 C121 138 132 121 146 108" fill="none" stroke="url(#stemPaint)" stroke-width="4.6" stroke-linecap="round"/>' +
+  '<path d="M60 277 C39 253 20 241 1 244 C20 264 38 280 60 282 C49 270 34 258 18 250" fill="url(#leafPaint)" stroke="#39452f" stroke-width="1"/>' +
+  '<path d="M59 277 C40 262 24 252 8 247" fill="none" stroke="#b1ac6a" stroke-width=".8" opacity=".62"/>' +
+  '<path d="M73 248 C85 218 110 202 145 205 C128 227 104 246 74 254 C92 236 112 221 133 211" fill="url(#leafPaint)" stroke="#39452f" stroke-width="1"/>' +
+  '<path d="M76 249 C96 231 116 217 137 209" fill="none" stroke="#c2b978" stroke-width=".8" opacity=".58"/>' +
+  '<path d="M103 190 C86 171 72 162 55 164 C68 183 84 195 103 196 C90 184 78 175 64 169" fill="url(#leafPaint)" stroke="#39452f" stroke-width=".9"/>' +
+  '<path d="M101 191 C85 179 72 171 60 167" fill="none" stroke="#bdb575" stroke-width=".7" opacity=".55"/>' +
+  '<path d="M112 165 C128 148 144 143 161 148 C149 164 133 175 115 177 C129 163 142 154 154 150" fill="url(#leafPaint)" stroke="#39452f" stroke-width=".9"/>' +
+  '<path d="M116 170 C130 160 143 152 155 150" fill="none" stroke="#c6bb78" stroke-width=".7" opacity=".55"/>' +
+
+  /* calyx glimpses and a deep shadow cup anchor the flower to the stem */
+  '<path d="M126 139 C116 151 111 164 112 178 C127 165 139 151 148 135 Z" fill="#687449"/>' +
+  '<path d="M160 137 C174 149 181 160 181 173 C164 161 151 151 142 135 Z" fill="#4d603b"/>' +
+  '<path d="M61 106 C78 47 119 18 171 17 C219 17 245 57 235 111 C226 158 188 178 137 169 C88 169 52 148 61 106 Z" fill="#6f2d42" opacity=".78"/>' +
+
+  /* background petals: broad, irregular architecture rather than a ring */
+  '<path d="M72 111 C45 102 43 78 57 59 C66 47 76 48 85 58 C91 35 108 19 124 24 C135 27 139 40 135 57 C149 31 166 14 184 20 C202 27 198 50 188 68 C207 43 226 43 235 59 C247 81 224 105 202 116 C151 132 105 130 72 111 Z" fill="url(#petalBack)"/>' +
+  '<path d="M54 115 C35 102 39 79 54 69 C65 62 76 68 80 82 C82 60 94 43 108 46 C124 49 122 70 113 87 C94 108 76 117 54 115 Z" fill="#d8798b"/>' +
+  '<path d="M197 119 C211 93 228 80 240 88 C253 98 247 121 228 139 C213 152 195 151 177 142 C184 135 191 127 197 119 Z" fill="#bc5b72"/>' +
+  '<path d="M76 128 C53 137 38 127 39 111 C40 94 58 85 79 91 C96 99 103 113 100 132 C91 128 83 127 76 128 Z" fill="#e49a9f"/>' +
+  '<path d="M94 91 C82 82 76 66 80 52 Q82 44 88 48 Q90 37 98 43 Q103 31 111 39 Q119 31 124 42 Q133 39 134 51 C137 68 120 86 94 91 Z" fill="#efaeb0"/>' +
+  '<path d="M132 78 C130 64 135 43 143 30 Q148 22 153 28 Q158 15 165 24 Q172 13 178 25 Q187 21 187 34 C189 54 166 74 132 78 Z" fill="#f1b8b5"/>' +
+  '<path d="M164 86 C170 72 180 50 192 41 Q199 35 202 42 Q210 31 215 42 Q225 37 228 49 Q237 50 233 61 C226 79 197 92 164 86 Z" fill="#eaa1a8"/>' +
+  '<path d="M210 88 C230 72 244 76 248 91 C251 106 238 123 216 132 C200 136 185 130 173 118 C190 111 201 101 210 88 Z" fill="#d98292"/>' +
+
+  /* lower foreground petals create the heavy, lush Peony silhouette */
+  '<path d="M58 121 C38 121 24 134 29 150 C36 171 66 175 91 158 C101 149 105 139 104 126 C87 130 74 128 58 121 Z" fill="url(#petalMid)"/>' +
+  '<path d="M86 141 C77 151 70 163 76 174 Q80 182 87 176 Q93 188 101 180 Q110 190 117 179 Q126 184 131 173 C138 159 140 143 134 127 C117 135 101 138 86 141 Z" fill="url(#petalFace)"/>' +
+  '<path d="M128 148 C124 161 125 177 136 185 Q143 190 147 182 Q154 193 161 183 Q170 188 174 177 Q183 174 181 160 C180 145 174 130 164 119 C154 132 142 142 128 148 Z" fill="url(#petalLight)"/>' +
+  '<path d="M168 143 C170 158 181 172 194 173 Q202 173 201 165 Q213 169 215 158 Q226 156 222 144 Q229 136 220 124 C211 112 200 105 188 104 C185 120 179 133 168 143 Z" fill="url(#petalMid)"/>' +
+  '<path d="M198 129 C209 145 228 149 242 137 C257 123 249 101 225 90 C216 87 207 88 198 93 C204 106 204 118 198 129 Z" fill="#d47789"/>' +
+
+  /* dark folds between overlapping petals establish depth before detail */
+  '<path d="M84 111 C95 76 125 54 164 51 C199 51 220 75 214 111 C208 139 184 155 149 153 C113 154 84 139 84 111 Z" fill="#8b344e"/>' +
+  '<path d="M103 119 C113 91 133 74 163 71 C190 69 204 88 197 115 C191 136 173 145 148 142 C124 144 104 136 103 119 Z" fill="#713047" opacity=".85"/>' +
+
+  /* middle petals: upright cups with individually scalloped crowns */
+  '<path d="M83 111 C66 102 66 83 77 72 C86 63 98 68 103 80 C103 62 114 50 126 53 C141 57 138 76 128 91 C117 106 102 115 83 111 Z" fill="url(#petalMid)"/>' +
+  '<path d="M110 93 C104 83 105 67 113 58 Q118 52 123 58 Q129 47 135 56 Q142 58 141 69 C142 84 131 105 113 116 C115 106 114 99 110 93 Z" fill="#f0a7ad"/>' +
+  '<path d="M136 84 C136 72 143 57 152 52 Q159 48 161 56 Q170 48 174 58 Q182 62 176 74 C172 90 155 103 135 107 C140 98 140 90 136 84 Z" fill="url(#petalLight)"/>' +
+  '<path d="M166 87 C171 76 182 66 192 65 Q199 64 198 72 Q209 69 210 79 Q216 86 207 95 C196 108 174 118 153 114 C161 105 165 96 166 87 Z" fill="#e991a0"/>' +
+  '<path d="M190 105 C203 91 217 93 222 105 C227 118 213 133 195 138 C183 141 172 137 162 128 C175 123 184 116 190 105 Z" fill="#d7798d"/>' +
+  '<path d="M93 123 C74 121 66 135 74 147 C83 161 105 157 120 140 C126 133 128 125 126 116 C114 122 103 125 93 123 Z" fill="#e994a1"/>' +
+  '<path d="M117 132 C100 142 98 158 110 166 C124 176 144 164 153 143 C156 135 155 127 151 120 C140 127 129 131 117 132 Z" fill="url(#petalFace)"/>' +
+  '<path d="M151 137 C143 154 150 168 164 169 C181 170 192 153 188 133 C185 123 179 117 171 112 C166 123 159 132 151 137 Z" fill="#e98f9e"/>' +
+
+  /* inner crumpled petals and recessed heart */
+  '<path d="M118 111 C111 98 118 86 129 86 C137 86 142 94 141 104 C147 89 158 82 168 88 C178 94 174 108 164 117 C149 126 132 124 118 111 Z" fill="#c95d77"/>' +
+  '<path d="M137 99 C139 87 150 79 159 84 C168 88 166 100 158 108 C151 115 143 117 134 113 C137 109 138 104 137 99 Z" fill="#ef9eaa"/>' +
+  '<path d="M158 105 C165 93 176 92 182 100 C188 109 180 120 168 124 C158 126 151 122 145 116 C151 113 155 109 158 105 Z" fill="#d86f84"/>' +
+  '<path d="M122 116 C115 106 104 105 99 114 C94 124 104 133 117 134 C126 133 132 128 137 120 C131 121 126 120 122 116 Z" fill="#dc7b8e"/>' +
+  /* folded inner petals: smaller, scalloped and directionally varied */
+  '<path d="M112 112 C106 104 107 94 114 88 Q119 84 123 89 Q126 80 133 82 Q140 84 137 94 C133 103 125 109 112 112 Z" fill="#ba4e69"/>' +
+  '<path d="M124 104 C118 94 122 83 130 79 Q136 76 139 83 Q143 73 151 76 Q158 80 153 91 C146 101 137 105 124 104 Z" fill="#e48797"/>' +
+  '<path d="M143 98 C142 87 149 78 157 78 Q164 79 164 87 Q171 79 178 84 Q184 90 176 99 C166 107 154 106 143 98 Z" fill="#c85b75"/>' +
+  '<path d="M162 104 C166 93 176 88 184 92 Q191 97 187 104 Q197 102 200 110 Q201 118 190 122 C179 124 170 117 162 104 Z" fill="#db7588"/>' +
+  '<path d="M171 119 C182 112 193 115 197 123 Q199 130 191 133 Q199 138 195 145 Q189 152 179 144 C171 137 168 129 171 119 Z" fill="#bf526d"/>' +
+  '<path d="M158 128 C168 126 177 132 178 141 Q178 148 170 148 Q175 156 168 161 Q159 166 152 156 C147 146 150 137 158 128 Z" fill="#e58a99"/>' +
+  '<path d="M139 130 C148 135 151 145 146 153 Q142 159 135 154 Q133 164 124 163 Q115 160 117 149 C120 138 127 132 139 130 Z" fill="#ce6179"/>' +
+  '<path d="M123 124 C122 135 115 143 106 142 Q99 140 101 132 Q92 138 86 131 Q81 123 91 116 C101 111 112 114 123 124 Z" fill="#e78994"/>' +
+  '<path d="M130 116 C124 110 125 101 131 96 Q136 92 140 98 Q144 90 151 93 Q157 97 152 105 C147 112 140 116 130 116 Z" fill="#f0a6ad"/>' +
+  '<path d="M149 112 C151 103 159 98 166 102 Q171 106 167 112 Q175 112 177 119 Q177 126 168 128 C159 128 153 122 149 112 Z" fill="#d66b81"/>' +
+  '<path d="M145 123 C153 119 161 123 163 130 Q164 136 157 138 Q161 144 155 148 Q148 151 142 143 C138 135 139 129 145 123 Z" fill="#eca0aa"/>' +
+  '<path d="M132 121 C132 130 126 136 119 135 Q113 133 115 127 Q108 131 104 125 Q101 118 109 114 C117 111 125 114 132 121 Z" fill="#d9798b"/>' +
+  '<path d="M139 112 Q143 102 150 105 Q154 107 152 112 Q159 109 162 114 Q165 120 158 124 Q149 129 140 123 Q135 119 139 112 Z" fill="#9e3e5a"/>' +
+  '<ellipse cx="146" cy="114" rx="6.8" ry="5.2" fill="url(#centerPaint)"/>' +
+  '<g fill="#e6b66f"><circle cx="142" cy="112" r="1.1"/><circle cx="146" cy="110" r="1"/><circle cx="150" cy="112" r="1.1"/><circle cx="149" cy="116" r="1"/><circle cx="144" cy="117" r=".9"/></g>' +
+
+  /* drawn folds and recessed seams make the petal planes legible */
+  '<g fill="none" stroke-linecap="round">' +
+    '<path d="M65 150 C73 142 82 137 94 134" stroke="#8f3852" stroke-width="2" opacity=".42"/>' +
+    '<path d="M91 174 C101 158 112 149 126 143" stroke="#9b3d57" stroke-width="1.8" opacity=".36"/>' +
+    '<path d="M145 184 C151 164 158 151 171 141" stroke="#a1415c" stroke-width="1.7" opacity=".36"/>' +
+    '<path d="M198 168 C196 151 192 139 184 129" stroke="#873249" stroke-width="1.7" opacity=".4"/>' +
+    '<path d="M58 103 C68 105 77 110 84 119" stroke="#a9445d" stroke-width="1.5" opacity=".34"/>' +
+    '<path d="M93 51 C104 62 109 75 109 89" stroke="#c86578" stroke-width="1.25" opacity=".42"/>' +
+    '<path d="M151 24 C157 37 158 50 155 65" stroke="#d57988" stroke-width="1.15" opacity=".38"/>' +
+    '<path d="M213 53 C204 66 197 77 193 90" stroke="#b34e66" stroke-width="1.35" opacity=".38"/>' +
+    '<path d="M112 95 C118 101 121 107 122 113" stroke="#93324e" stroke-width="1.2" opacity=".48"/>' +
+    '<path d="M169 91 C164 99 160 106 159 113" stroke="#95354f" stroke-width="1.2" opacity=".48"/>' +
+    '<path d="M126 132 C133 127 138 123 140 118" stroke="#9c3e58" stroke-width="1.1" opacity=".45"/>' +
+    '<path d="M165 143 C160 134 156 128 151 123" stroke="#a9445e" stroke-width="1.1" opacity=".42"/>' +
+  '</g>' +
+
+  /* a few selective morning-lit rims, not an effects layer */
+  '<path d="M54 115 C40 104 42 85 55 72" fill="none" stroke="#f7d0c8" stroke-width="1.35" stroke-linecap="round" opacity=".65"/>' +
+  '<path d="M92 66 C84 47 93 31 107 25" fill="none" stroke="#f9d9cf" stroke-width="1.15" stroke-linecap="round" opacity=".72"/>' +
+  '<path d="M137 51 C138 30 149 16 164 15" fill="none" stroke="#ffe0d3" stroke-width="1.15" stroke-linecap="round" opacity=".72"/>' +
+  '<path d="M76 128 C58 135 46 128 44 116" fill="none" stroke="#f8c8c1" stroke-width="1" stroke-linecap="round" opacity=".55"/>';
+}
+
 function setFinalPeonySimpleState(svg){
   var stemPath = svg.querySelector('#stemPath');
   if (stemPath){ stemPath.style.strokeDasharray = 'none'; stemPath.style.strokeDashoffset = 0; stemPath.style.transform = 'rotate(0deg)'; }
   toArray(svg.querySelectorAll('.js-leaf')).forEach(function(el){
     var ry = el.getAttribute('data-ry-final') || -8;
     var rx = el.getAttribute('data-rx-final') || 0;
+    el.style.opacity = 1;
     el.style.transform = 'rotateY('+ry+'deg) rotateX('+rx+'deg) scaleY(1) scaleX(1)';
   });
   toArray(svg.querySelectorAll('.js-tier-outer, .js-tier-mid, .js-tier-inner')).forEach(function(el){
@@ -842,12 +1023,15 @@ function setFinalPeonySimpleState(svg){
 //      finishing its settle, not after it stops
 function playPeonySimple(sp){
   var svg = document.getElementById('bloom');
+  var morningLight = document.getElementById('morningLight');
   var flowerText = document.querySelector('.flower-text');
   var letter = document.querySelector('.letter');
   var again = document.getElementById('again');
 
   if (REDUCE_MOTION){
     setFinalPeonySimpleState(svg);
+    document.body.style.backgroundColor = '#221d23';
+    morningLight.style.opacity = 1;
     flowerText.style.opacity = 1; flowerText.style.transform = 'none';
     letter.style.opacity = 1; letter.style.transform = 'none';
     again.style.opacity = 0.85;
@@ -868,26 +1052,34 @@ function playPeonySimple(sp){
   // motion 1: stem + leaves, heavily overlapped, each a single tween whose
   // own easing already carries a gentle settle — no separate spring-back.
   tl.add({ targets: stemPath, strokeDashoffset:[anime.setDashoffset,0], rotate:[-1.6,0],
-    duration:620, easing:'easeOutSine' }, 0);
+    duration:650, easing:'easeOutSine' }, 180);
+
+  // Morning arrives behind the drawing, beginning after the stem is under
+  // way and reaching full warmth while the Peony is still opening.
+  tl.add({ targets: document.body, backgroundColor:['#171318','#211b20'],
+    duration:960, easing:'easeInOutSine' }, 480);
+  tl.add({ targets: morningLight, opacity:[0,1],
+    duration:980, easing:'easeInOutSine' }, 500);
 
   var leafDelay = function(el, i){ return i*90 + ((i*53)%37); };
   tl.add({ targets: leaves,
+    opacity:[0,1],
     rotateY: function(el){ return [parseFloat(el.getAttribute('data-ry-furled')), parseFloat(el.getAttribute('data-ry-final'))]; },
     rotateX: function(el){ return [0, parseFloat(el.getAttribute('data-rx-final'))]; },
     scaleY:[0.16,1], scaleX:[0.3,1],
-    duration:560, easing:'easeOutBack', delay: leafDelay }, 300);
+    duration:560, easing:'easeOutBack', delay: leafDelay }, 480);
 
   // motion 2: the bloom, as one continuous composition — 3 tiers instead
   // of 48 petals, growing from the stem's tip together with only a light
   // stagger between them (inner first, as if emerging from the center;
   // outer last, the way a peony's biggest petals are last to spread).
-  var bloomStart = 640;
+  var bloomStart = 620;
   tl.add({ targets: tierInner, opacity:[0,1], scale:[0.2,1], rotate:[-6,0],
-    duration:900, easing:'easeOutBack' }, bloomStart);
+    duration:760, easing:'easeOutBack' }, bloomStart);
   tl.add({ targets: tierMid, opacity:[0,1], scale:[0.2,1], rotate:[8,0],
-    duration:920, easing:'easeOutBack' }, bloomStart+100);
+    duration:780, easing:'easeOutBack' }, bloomStart+80);
   tl.add({ targets: tierOuter, opacity:[0,1], scale:[0.2,1], rotate:[-10,0],
-    duration:940, easing:'easeOutBack' }, bloomStart+200);
+    duration:800, easing:'easeOutBack' }, bloomStart+160);
 
   // per-petal variation, layered on top of each tier's own tween (not
   // instead of it): one shared tween per tier targeting every .js-petal
@@ -912,20 +1104,405 @@ function playPeonySimple(sp){
   // motion 3: typography resolves while the outer tier is still mid-way
   // through its own settle-overshoot (outer runs bloomStart+200 .. +1140;
   // text starts well inside that window), not after everything stops.
-  var textStart = bloomStart + 200 + 420;
+  var textStart = 1540;
   tl.add({ targets: flowerText, opacity:[0,1], translateY:[8,0], duration:400, easing:'easeOutCubic' }, textStart);
-  tl.add({ targets: letter, opacity:[0,1], translateY:[8,0], duration:400, easing:'easeOutCubic' }, textStart+220);
-  tl.add({ targets: again, opacity:[0,0.85], duration:300, easing:'easeOutCubic' }, textStart+440);
+  tl.add({ targets: letter, opacity:[0,1], translateY:[10,0], duration:460, easing:'easeOutCubic' }, textStart+40);
+  tl.add({ targets: again, opacity:[0,0.78], duration:300, easing:'easeOutCubic' }, textStart+210);
 
   // testing hook: pause the fully-built timeline at t=0, only when a test
   // harness asked for it — lets the harness seek() to an exact stage.
-  if (window.__PEONY_TEST_PAUSE__){ tl.pause(); tl.seek(0); }
+  var requestedFrame = new URLSearchParams(location.search).get('frame');
+  if (window.__PEONY_TEST_PAUSE__ || requestedFrame !== null){
+    tl.pause();
+    tl.seek(requestedFrame === null ? 0 : Math.max(0, parseInt(requestedFrame, 10) || 0));
+  }
 
   tl.finished.then(function(){
     window.__mirrorEntranceMs = Math.round(performance.now() - t0);
     document.dispatchEvent(new CustomEvent('mirror:entrance-done', { detail:{ ms: window.__mirrorEntranceMs } }));
     showNote(true);
   });
+}
+
+function renderIllustratedPeony(){
+  return `
+    <defs>
+      <linearGradient id="stemG" x1="145" y1="360" x2="235" y2="815" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#b4b56e"/><stop offset=".42" stop-color="#78804a"/><stop offset="1" stop-color="#44492b"/>
+      </linearGradient>
+      <linearGradient id="leafG1" x1="42" y1="430" x2="177" y2="540" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#a7aa62"/><stop offset=".48" stop-color="#6f7a48"/><stop offset="1" stop-color="#3e4b32"/>
+      </linearGradient>
+      <linearGradient id="leafG2" x1="170" y1="585" x2="350" y2="500" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#4a5735"/><stop offset=".55" stop-color="#879157"/><stop offset="1" stop-color="#b3ad62"/>
+      </linearGradient>
+      <linearGradient id="petalBack" x1="70" y1="105" x2="315" y2="410" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff0e3"/><stop offset=".3" stop-color="#f8c3bf"/><stop offset=".68" stop-color="#dd7890"/><stop offset="1" stop-color="#87334f"/>
+      </linearGradient>
+      <linearGradient id="petalRose" x1="125" y1="105" x2="290" y2="380" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#ffe4da"/><stop offset=".38" stop-color="#ef9baa"/><stop offset=".74" stop-color="#c85876"/><stop offset="1" stop-color="#762743"/>
+      </linearGradient>
+      <linearGradient id="petalWarm" x1="85" y1="145" x2="270" y2="390" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff4e5"/><stop offset=".44" stop-color="#f3aaa9"/><stop offset=".78" stop-color="#d86f84"/><stop offset="1" stop-color="#91344f"/>
+      </linearGradient>
+      <linearGradient id="petalDeep" x1="155" y1="170" x2="260" y2="360" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#db7289"/><stop offset=".5" stop-color="#b44263"/><stop offset="1" stop-color="#712842"/>
+      </linearGradient>
+      <radialGradient id="heartG" cx="45%" cy="35%" r="70%">
+        <stop stop-color="#7b2946"/><stop offset=".62" stop-color="#a83d5b"/><stop offset="1" stop-color="#5f2039"/>
+      </radialGradient>
+      <filter id="petalShadow" x="-30%" y="-30%" width="160%" height="170%">
+        <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#351421" flood-opacity=".28"/>
+      </filter>
+    </defs>
+
+    <g class="illustrated-stem">
+      <path id="illustratedStemPath" d="M221 817 C224 727 201 681 179 624 C151 552 153 470 190 361" fill="none" stroke="url(#stemG)" stroke-width="8" stroke-linecap="round"/>
+      <path d="M218 813 C219 725 197 680 176 624 C151 552 156 475 189 365" fill="none" stroke="rgba(230,221,151,.34)" stroke-width="1.6" stroke-linecap="round"/>
+    </g>
+
+    <g class="illustrated-leaf leaf-left-high" style="transform-origin:166px 516px">
+      <path d="M168 518 C130 501 82 473 38 428 C89 421 137 439 166 483 C176 498 176 510 168 518Z" fill="url(#leafG1)" stroke="#b1ad68" stroke-opacity=".25"/>
+      <path d="M164 509 C127 477 86 449 44 432" fill="none" stroke="#c7c889" stroke-opacity=".52" stroke-width="1.3"/>
+      <path d="M125 479 Q113 454 101 442 M145 493 Q134 462 122 448 M104 463 Q82 462 63 449" fill="none" stroke="#d0cd8a" stroke-opacity=".22"/>
+    </g>
+    <g class="illustrated-leaf leaf-right" style="transform-origin:177px 590px">
+      <path d="M176 591 C218 531 282 492 348 511 C321 554 247 593 176 591Z" fill="url(#leafG2)" stroke="#b0ad67" stroke-opacity=".28"/>
+      <path d="M181 586 C230 558 286 532 341 514" fill="none" stroke="#d4d08b" stroke-opacity=".48" stroke-width="1.4"/>
+      <path d="M225 562 Q235 538 251 523 M263 546 Q276 521 292 514 M235 558 Q261 565 284 559" fill="none" stroke="#d4d08b" stroke-opacity=".2"/>
+    </g>
+    <g class="illustrated-leaf leaf-left-low" style="transform-origin:189px 671px">
+      <path d="M190 671 C142 625 88 614 43 651 C83 685 142 694 190 671Z" fill="url(#leafG1)" stroke="#aaa864" stroke-opacity=".28"/>
+      <path d="M184 667 C135 654 90 649 49 652" fill="none" stroke="#d0ce88" stroke-opacity=".45" stroke-width="1.3"/>
+      <path d="M139 656 Q122 636 105 629 M112 652 Q91 667 74 672" fill="none" stroke="#d0ce88" stroke-opacity=".2"/>
+    </g>
+
+    <g class="petal-group bloom-back-left" style="transform-origin:191px 382px" filter="url(#petalShadow)">
+      <path d="M195 376 C151 374 89 354 57 316 Q39 292 48 268 Q24 237 43 206 Q62 176 98 202 Q83 164 111 139 Q139 115 162 147 C148 218 166 307 195 376Z" fill="url(#petalBack)" stroke="#ffe8dc" stroke-opacity=".38"/>
+      <path d="M191 370 C159 335 131 275 135 219 Q136 187 151 172 Q142 139 166 113 Q194 82 221 120 C214 204 208 297 191 370Z" fill="url(#petalWarm)" stroke="#ffe9df" stroke-opacity=".34"/>
+      <path d="M178 346 C145 294 132 225 153 165 M156 337 C112 309 79 271 72 224" fill="none" stroke="#fff1e5" stroke-opacity=".28" stroke-width="1.5"/>
+    </g>
+    <g class="petal-group bloom-back-top" style="transform-origin:197px 382px">
+      <path d="M194 373 C180 310 184 220 201 151 Q207 126 224 115 Q231 79 261 72 Q295 67 299 108 Q328 80 350 108 Q372 136 351 169 C298 218 250 297 194 373Z" fill="url(#petalRose)" stroke="#ffe2d9" stroke-opacity=".35"/>
+      <path d="M202 374 C231 304 274 224 319 183 Q341 162 361 173 Q390 187 374 221 Q404 250 381 282 Q367 301 343 304 C299 336 251 362 202 374Z" fill="url(#petalBack)" stroke="#ffd9d3" stroke-opacity=".32"/>
+      <path d="M210 346 C226 270 253 191 281 113 M224 358 C270 311 317 260 354 203" fill="none" stroke="#ffe9df" stroke-opacity=".25" stroke-width="1.45"/>
+    </g>
+    <g class="petal-group bloom-back-right" style="transform-origin:203px 384px">
+      <path d="M204 379 C249 356 307 330 343 292 Q363 271 365 245 Q388 229 402 254 Q414 282 389 306 Q401 341 374 365 Q348 388 319 376 C278 389 240 388 204 379Z" fill="url(#petalRose)" stroke="#ffc9ca" stroke-opacity=".3"/>
+      <path d="M202 380 C240 384 302 397 335 420 Q352 436 339 451 Q325 467 301 453 Q279 482 249 466 Q215 447 202 380Z" fill="url(#petalDeep)" opacity=".92"/>
+      <path d="M222 374 C274 356 327 327 372 279 M224 392 C268 402 308 421 328 442" fill="none" stroke="#ffd7d4" stroke-opacity=".24" stroke-width="1.35"/>
+    </g>
+
+    <g class="petal-group bloom-outer-left" style="transform-origin:196px 384px">
+      <path d="M198 379 C150 371 92 344 76 304 Q66 278 83 257 Q94 238 115 248 Q110 220 132 206 Q158 190 177 213 C165 270 182 333 198 379Z" fill="url(#petalWarm)" stroke="#fff0e5" stroke-opacity=".46"/>
+      <path d="M196 381 C157 363 126 322 124 281 Q123 251 144 236 Q165 220 182 239 Q187 208 212 202 Q237 198 248 221 C229 278 213 334 196 381Z" fill="url(#petalBack)" stroke="#ffe7de" stroke-opacity=".42"/>
+      <path d="M185 362 C162 329 151 286 158 244 M174 367 C135 344 108 308 99 267" fill="none" stroke="#fff4ea" stroke-opacity=".31" stroke-width="1.4"/>
+    </g>
+    <g class="petal-group bloom-outer-right" style="transform-origin:201px 386px">
+      <path d="M200 381 C223 327 255 271 291 239 Q311 220 333 229 Q354 238 350 263 Q375 262 383 286 Q391 313 367 329 Q365 356 343 370 C295 383 244 386 200 381Z" fill="url(#petalRose)" stroke="#ffd7d4" stroke-opacity=".36"/>
+      <path d="M201 385 C247 370 298 370 331 389 Q352 402 343 424 Q334 444 309 438 Q296 462 269 458 Q228 447 201 385Z" fill="url(#petalWarm)" stroke="#ffd8d1" stroke-opacity=".3"/>
+      <path d="M218 367 C251 318 293 274 329 244 M222 386 C270 381 311 394 333 418" fill="none" stroke="#ffe1dc" stroke-opacity=".27" stroke-width="1.35"/>
+    </g>
+    <g class="petal-group bloom-front-skirt" style="transform-origin:198px 386px" filter="url(#petalShadow)">
+      <path d="M199 383 C175 377 145 382 126 402 Q108 422 123 440 Q139 458 164 445 Q179 475 208 470 Q234 466 239 441 C230 417 215 397 199 383Z" fill="url(#petalBack)" stroke="#fff0e3" stroke-opacity=".45"/>
+      <path d="M202 385 C225 381 257 389 275 410 Q293 431 278 450 Q262 469 239 453 Q223 480 194 468 C185 438 190 406 202 385Z" fill="url(#petalRose)" stroke="#ffd4d1" stroke-opacity=".36"/>
+      <path d="M145 423 C167 404 187 397 200 392 M211 394 C239 404 258 423 265 445" fill="none" stroke="#fff0e4" stroke-opacity=".3" stroke-width="1.4"/>
+    </g>
+
+    <g class="petal-group bloom-mid-left" style="transform-origin:198px 382px">
+      <path d="M198 374 C165 350 146 309 153 273 Q159 244 181 241 Q202 239 210 263 C204 300 202 337 198 374Z" fill="url(#petalRose)" stroke="#ffe3da" stroke-opacity=".38"/>
+      <path d="M201 374 C178 340 176 294 193 259 Q207 232 231 239 Q254 247 250 274 C230 309 214 345 201 374Z" fill="url(#petalWarm)" stroke="#ffebe1" stroke-opacity=".4"/>
+    </g>
+    <g class="petal-group bloom-mid-right" style="transform-origin:202px 383px">
+      <path d="M203 374 C216 328 235 285 263 263 Q283 246 301 260 Q320 276 309 300 Q328 306 326 328 Q323 350 299 356 C265 367 233 373 203 374Z" fill="url(#petalRose)" stroke="#ffd9d5" stroke-opacity=".32"/>
+      <path d="M201 378 C232 359 266 348 291 359 Q314 369 309 391 Q302 412 279 405 Q266 426 242 416 C224 406 210 392 201 378Z" fill="url(#petalDeep)" opacity=".92"/>
+    </g>
+
+    <g class="petal-group bloom-ribbon-left" style="transform-origin:200px 382px">
+      <path d="M202 375 C171 348 149 311 154 274 Q158 249 176 240 Q194 231 207 247 Q218 224 238 225 Q260 228 265 250 Q264 267 246 278 C226 307 212 341 202 375Z" fill="url(#petalWarm)" stroke="#fff0e4" stroke-opacity=".5"/>
+      <path d="M199 371 C180 342 173 308 183 279 Q191 257 208 259 Q225 262 230 280 C216 309 206 341 199 371Z" fill="#e88498" opacity=".78"/>
+      <path d="M196 356 C184 323 188 287 205 267" fill="none" stroke="#ffe6dc" stroke-opacity=".42" stroke-width="1.2"/>
+    </g>
+    <g class="petal-group bloom-ribbon-top" style="transform-origin:202px 382px">
+      <path d="M203 373 C193 333 197 292 218 261 Q231 241 249 244 Q267 248 270 266 Q285 250 301 260 Q319 272 313 293 Q307 306 291 312 C257 327 228 349 203 373Z" fill="url(#petalRose)" stroke="#ffddd8" stroke-opacity=".44"/>
+      <path d="M207 362 C213 325 227 291 249 269" fill="none" stroke="#ffe8df" stroke-opacity=".4" stroke-width="1.3"/>
+    </g>
+    <g class="petal-group bloom-ribbon-right" style="transform-origin:203px 384px">
+      <path d="M204 376 C236 347 267 329 293 333 Q316 337 319 358 Q321 378 300 387 Q306 407 287 419 Q267 430 249 414 C230 402 215 389 204 376Z" fill="url(#petalDeep)" stroke="#f4a4b0" stroke-opacity=".36"/>
+      <path d="M212 374 C239 353 267 347 294 352" fill="none" stroke="#f8bec5" stroke-opacity=".34" stroke-width="1.1"/>
+    </g>
+
+    <g class="petal-group bloom-crinkle-left" style="transform-origin:202px 379px">
+      <path d="M207 373 C184 365 160 350 153 331 Q148 318 157 308 Q163 299 173 301 Q179 289 190 294 Q198 282 208 292 C207 319 206 347 207 373Z" fill="url(#petalWarm)" stroke="#ffe9df" stroke-opacity=".56"/>
+      <path d="M207 371 C191 353 184 330 191 313 Q196 300 207 304 Q214 290 226 297 Q239 304 234 319 C223 337 214 354 207 371Z" fill="url(#petalRose)" stroke="#ffd9d5" stroke-opacity=".48"/>
+      <path d="M200 357 C188 338 188 318 197 305" fill="none" stroke="#fff0e6" stroke-opacity=".46" stroke-width="1.25"/>
+    </g>
+    <g class="petal-group bloom-crinkle-top" style="transform-origin:204px 379px">
+      <path d="M208 369 C203 344 207 316 222 299 Q232 288 242 293 Q250 281 261 288 Q272 296 268 310 Q280 313 280 325 Q278 339 263 344 C244 350 225 359 208 369Z" fill="url(#petalWarm)" stroke="#ffe2db" stroke-opacity=".5"/>
+      <path d="M211 366 C219 340 232 318 250 307" fill="none" stroke="#fff0e7" stroke-opacity=".42" stroke-width="1.2"/>
+    </g>
+    <g class="petal-group bloom-crinkle-right" style="transform-origin:204px 380px">
+      <path d="M209 373 C231 355 253 345 272 348 Q285 350 288 361 Q298 367 294 377 Q290 389 277 389 Q273 402 261 404 Q244 405 231 393 C222 386 215 379 209 373Z" fill="url(#petalRose)" stroke="#f8b1ba" stroke-opacity=".45"/>
+      <path d="M216 371 C235 358 254 356 272 362" fill="none" stroke="#ffd8d5" stroke-opacity=".4" stroke-width="1.15"/>
+    </g>
+    <g class="petal-group bloom-crinkle-front" style="transform-origin:203px 380px">
+      <path d="M204 375 C190 368 174 370 164 381 Q157 390 164 399 Q171 408 182 402 Q188 415 201 414 Q213 411 216 400 C214 389 209 381 204 375Z" fill="url(#petalBack)" stroke="#fff0e5" stroke-opacity=".55"/>
+      <path d="M207 377 C220 372 236 376 243 386 Q249 396 242 404 Q234 413 224 407 Q218 419 206 414 C201 402 202 388 207 377Z" fill="#d96682" stroke="#f6a5b1" stroke-opacity=".35"/>
+    </g>
+
+    <g class="petal-group bloom-inner-left" style="transform-origin:201px 377px">
+      <path d="M202 367 C182 345 174 316 185 292 Q197 269 216 278 Q230 254 250 266 Q268 279 256 301 C235 321 217 345 202 367Z" fill="url(#petalDeep)" stroke="#f6a1ad" stroke-opacity=".32"/>
+      <path d="M203 369 C185 358 171 340 174 320 Q177 301 194 298 Q209 297 215 313 C214 335 209 352 203 369Z" fill="#cf607c"/>
+    </g>
+    <g class="petal-group bloom-inner-right" style="transform-origin:202px 377px">
+      <path d="M204 368 C217 340 235 314 255 302 Q273 292 286 306 Q299 322 288 339 Q301 349 293 365 Q285 380 266 376 C242 374 222 371 204 368Z" fill="url(#petalDeep)" stroke="#f7a4b0" stroke-opacity=".3"/>
+      <path d="M203 370 C219 355 235 345 250 347 Q266 349 269 364 Q270 378 255 386 C235 382 217 377 203 370Z" fill="#b94868"/>
+    </g>
+    <g class="petal-group bloom-heart" style="transform-origin:203px 374px">
+      <path d="M201 365 C188 350 188 326 202 312 Q219 295 238 307 Q256 319 251 341 Q267 346 264 364 Q260 383 240 387 Q218 390 201 365Z" fill="url(#heartG)"/>
+      <path d="M217 364 C202 351 199 335 207 323 Q214 313 224 318 Q230 306 240 312 Q250 319 244 331 C234 342 225 353 217 364Z" fill="#da7187" stroke="#f5a7b1" stroke-opacity=".38"/>
+      <path d="M220 367 C229 350 241 338 254 337 Q265 338 267 348 Q274 354 268 363 Q262 372 251 369 Q243 379 233 374Z" fill="#b64464"/>
+      <path d="M214 366 C201 361 188 351 187 339 Q186 329 195 326 Q200 316 209 320 Q217 324 216 334 C213 346 213 357 214 366Z" fill="#c85370" stroke="#ef9baa" stroke-opacity=".3"/>
+      <path d="M222 357 C216 345 218 330 227 322 Q235 315 243 320 Q252 326 248 337 Q255 343 250 351 Q242 361 222 357Z" fill="#8c2c4a"/>
+      <path d="M211 370 C201 368 191 370 186 378 Q181 386 188 392 Q195 398 202 392 Q208 401 217 397 Q225 392 221 382Z" fill="#e47f91"/>
+      <path d="M221 371 C231 366 243 368 249 376 Q255 384 249 391 Q243 398 235 392 Q230 402 221 398 Q212 393 214 383Z" fill="#c65370"/>
+      <g fill="#e7a574" opacity=".9">
+        <circle cx="213" cy="343" r="1.9"/><circle cx="219" cy="334" r="1.5"/><circle cx="226" cy="344" r="1.8"/><circle cx="234" cy="336" r="1.4"/>
+        <circle cx="217" cy="351" r="1.5"/><circle cx="230" cy="353" r="1.7"/><circle cx="241" cy="346" r="1.3"/>
+      </g>
+    </g>`;
+}
+
+function playIllustratedPeony(){
+  var svg = document.getElementById('bloom');
+  var stemPaths = toArray(svg.querySelectorAll('.illustrated-stem path'));
+  var leaves = toArray(svg.querySelectorAll('.illustrated-leaf'));
+  var petals = toArray(svg.querySelectorAll('.petal-group'));
+  var morningLight = document.getElementById('morningLight');
+  var flowerText = document.querySelector('.flower-text');
+  var letter = document.querySelector('.letter');
+  var again = document.getElementById('again');
+  var opener = document.querySelector('.opener');
+
+  if (REDUCE_MOTION){
+    stemPaths.forEach(function(path){ path.style.strokeDashoffset = 0; });
+    leaves.concat(petals).forEach(function(el){
+      el.style.opacity = 1;
+      el.style.transform = 'scale(1) rotate(0deg)';
+    });
+    svg.style.transform = 'translateY(-1.5vh) scale(0.80)';
+    document.body.style.backgroundColor = '#4a3b3a';
+    morningLight.style.opacity = 1;
+    opener.style.color = '#72595a';
+    flowerText.style.opacity = 1;
+    letter.style.opacity = 1;
+    again.style.opacity = 0.78;
+    showNote(true);
+    return;
+  }
+
+  var t0 = performance.now();
+  var tl = anime.timeline({ easing:'easeOutCubic' });
+  window.__peonyTl = tl;
+
+  tl.add({ targets:stemPaths, strokeDashoffset:[anime.setDashoffset,0],
+    duration:2200, easing:'easeInOutSine' }, 300);
+
+  tl.add({ targets:morningLight, opacity:[0,1],
+    duration:7000, easing:'easeInOutSine' }, 650);
+  tl.add({ targets:document.body, backgroundColor:['#20191f','#4a3b3a'],
+    duration:7200, easing:'easeInOutSine' }, 500);
+
+  tl.add({ targets:leaves, opacity:[0,1], scaleY:[0.08,1], scaleX:[0.24,1],
+    rotate:function(el,i){ return [[-8,7,-6][i],0]; },
+    duration:1200, delay:anime.stagger(340), easing:'easeOutBack' }, 1550);
+
+  var heart = svg.querySelector('.bloom-heart');
+  var inner = [svg.querySelector('.bloom-inner-left'), svg.querySelector('.bloom-inner-right')];
+  var folds = toArray(svg.querySelectorAll('.bloom-crinkle-left, .bloom-crinkle-top, .bloom-crinkle-right, .bloom-crinkle-front'));
+  var cup = toArray(svg.querySelectorAll('.bloom-ribbon-left, .bloom-ribbon-top, .bloom-ribbon-right, .bloom-mid-left, .bloom-mid-right'));
+  var outer = [svg.querySelector('.bloom-outer-left'), svg.querySelector('.bloom-outer-right')];
+  var back = toArray(svg.querySelectorAll('.bloom-back-left, .bloom-back-top, .bloom-back-right, .bloom-front-skirt'));
+
+  // Five overlapping tiers replace the previous per-petal pop-in. Each tier
+  // begins already folded, then opens as one continuous cup around the tier
+  // inside it. The light stagger only breaks symmetry within a tier.
+  tl.add({ targets:heart, opacity:[0,1], duration:420, easing:'easeOutSine' }, 2300);
+  tl.add({ targets:heart, scaleY:[0.14,1], scaleX:[0.52,1],
+    translateY:[10,0], duration:2100, easing:'easeInOutSine' }, 2300);
+  tl.add({ targets:inner, opacity:[0,1], duration:460, delay:anime.stagger(70), easing:'easeOutSine' }, 2600);
+  tl.add({ targets:inner, scaleY:[0.22,1], scaleX:[0.58,1],
+    rotate:function(el,i){ return [[5,-5][i],0]; }, translateY:[9,0],
+    duration:2300, delay:anime.stagger(90), easing:'easeInOutSine' }, 2600);
+  tl.add({ targets:folds, opacity:[0,1], duration:500, delay:anime.stagger(60), easing:'easeOutSine' }, 2900);
+  tl.add({ targets:folds, scaleY:[0.34,1], scaleX:[0.68,1],
+    rotate:function(el,i){ return [[-6,4,-4,3][i],0]; }, translateY:[8,0],
+    duration:2500, delay:anime.stagger(80), easing:'easeInOutSine' }, 2900);
+  tl.add({ targets:cup, opacity:[0,1], duration:520, delay:anime.stagger(55), easing:'easeOutSine' }, 3250);
+  tl.add({ targets:cup, scaleY:[0.46,1], scaleX:[0.76,1],
+    rotate:function(el,i){ return [[-7,5,-4,4,-4][i],0]; }, translateY:[6,0],
+    duration:2700, delay:anime.stagger(75), easing:'easeInOutSine' }, 3250);
+  tl.add({ targets:outer, opacity:[0,1], duration:540, delay:anime.stagger(70), easing:'easeOutSine' }, 3600);
+  tl.add({ targets:outer, scaleY:[0.60,1], scaleX:[0.84,1],
+    rotate:function(el,i){ return [[-8,7][i],0]; }, translateY:[4,0],
+    duration:2850, delay:anime.stagger(100), easing:'easeInOutSine' }, 3600);
+  tl.add({ targets:back, opacity:[0,1], duration:560, delay:anime.stagger(65), easing:'easeOutSine' }, 3950);
+  tl.add({ targets:back, scaleY:[0.70,1], scaleX:[0.90,1],
+    rotate:function(el,i){ return [[-7,5,-5,3][i],0]; }, translateY:[3,0],
+    duration:3000, delay:anime.stagger(90), easing:'easeInOutSine' }, 3950);
+
+  tl.add({ targets:svg, scale:[1.05,1.11], duration:4800,
+    easing:'easeOutSine' }, 2300);
+
+  // Hold the fully opened flower at full-screen scale, then pull the whole
+  // transparent SVG composition upward and back to reveal the note cleanly.
+  tl.add({ targets:svg, scale:[1.11,0.80], translateY:['3.8vh','-1.5vh'],
+    duration:1450, easing:'easeInOutCubic' }, 7500);
+
+  tl.add({ targets:letter, opacity:[0,1], translateY:[10,0],
+    duration:900, easing:'easeOutCubic' }, 8650);
+  tl.add({ targets:flowerText, opacity:[0,1], translateY:[6,0],
+    duration:650, easing:'easeOutCubic' }, 8950);
+  tl.add({ targets:again, opacity:[0,0.78], duration:300,
+    easing:'easeOutCubic' }, 9310);
+
+  var requestedFrame = new URLSearchParams(location.search).get('frame');
+  if (window.__PEONY_TEST_PAUSE__ || requestedFrame !== null){
+    tl.pause();
+    tl.seek(requestedFrame === null ? 0 : Math.max(0, parseInt(requestedFrame,10) || 0));
+  }
+
+  tl.finished.then(function(){
+    window.__mirrorEntranceMs = Math.round(performance.now() - t0);
+    document.dispatchEvent(new CustomEvent('mirror:entrance-done', { detail:{ ms:window.__mirrorEntranceMs } }));
+    showNote(true);
+  });
+}
+
+/*
+ * Final Peony direction. The approved painted Peony supplies the botanical
+ * detail; SVG clips divide it into overlapping, independently hinged petal
+ * masses. Nothing fades in as a completed flower: each visible section grows
+ * from the flower's throat, then a final aligned pass quietly removes seams.
+ */
+function renderGrowingPeony(){
+  var image = '<image class="photo-paint" href="peony-bloom-transparent.png" xlink:href="peony-bloom-transparent.png" x="-42" y="0" width="474" height="844" preserveAspectRatio="none"/>';
+  return '<defs>' +
+    '<linearGradient id="stemPhotoG" x1="145" y1="360" x2="235" y2="815" gradientUnits="userSpaceOnUse"><stop stop-color="#b4b56e"/><stop offset=".42" stop-color="#78804a"/><stop offset="1" stop-color="#44492b"/></linearGradient>' +
+    '<linearGradient id="leafPhotoG1" x1="42" y1="430" x2="177" y2="540" gradientUnits="userSpaceOnUse"><stop stop-color="#a7aa62"/><stop offset=".48" stop-color="#6f7a48"/><stop offset="1" stop-color="#3e4b32"/></linearGradient>' +
+    '<linearGradient id="leafPhotoG2" x1="170" y1="585" x2="350" y2="500" gradientUnits="userSpaceOnUse"><stop stop-color="#4a5735"/><stop offset=".55" stop-color="#879157"/><stop offset="1" stop-color="#b3ad62"/></linearGradient>' +
+    '<mask id="stemPhotoMask" maskUnits="userSpaceOnUse" x="0" y="0" width="390" height="844"><rect width="390" height="844" fill="#000"/><path class="stem-mask-path" d="M202 832 C204 760 192 690 173 625 C155 564 145 502 151 437 C154 397 160 375 166 353" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round" stroke-dasharray="1200" stroke-dashoffset="1200"/></mask>' +
+    '<clipPath id="leafLowerClip"><ellipse cx="70" cy="590" rx="82" ry="38" transform="rotate(-25 70 590)"/><ellipse cx="264" cy="485" rx="112" ry="37" transform="rotate(-15 264 485)"/></clipPath>' +
+    '<clipPath id="leafMidClip"><ellipse cx="48" cy="394" rx="70" ry="31" transform="rotate(42 48 394)"/></clipPath>' +
+    '<clipPath id="bloomBackClip"><path d="M18 276 C20 148 82 49 193 29 C311 10 389 94 414 222 C405 297 352 341 292 349 C223 314 149 322 77 347 C39 336 20 313 18 276Z"/></clipPath>' +
+    '<clipPath id="bloomLeftClip"><path d="M19 281 C15 212 42 148 98 94 C142 62 178 77 184 137 C159 190 159 257 188 330 C132 372 63 356 27 318Z"/></clipPath>' +
+    '<clipPath id="bloomRightClip"><path d="M205 75 C286 40 368 87 408 177 C431 247 399 322 327 374 C268 387 229 356 213 313 C254 246 252 162 205 75Z"/></clipPath>' +
+    '<clipPath id="bloomCupClip"><path d="M72 189 C103 91 213 52 310 101 C371 135 389 227 345 302 C304 364 231 385 158 351 C83 326 48 265 72 189Z"/></clipPath>' +
+    '<clipPath id="bloomInnerClip"><path d="M117 157 C157 92 258 78 323 141 C365 183 347 271 298 316 C239 354 157 324 119 276 C93 240 94 193 117 157Z"/></clipPath>' +
+    '<clipPath id="bloomHeartClip"><path d="M155 172 C183 122 264 119 307 166 C340 203 316 264 276 296 C230 322 167 293 145 249 C133 223 138 193 155 172Z"/></clipPath>' +
+    '<clipPath id="bloomFrontClip"><path d="M31 296 C77 309 123 314 174 296 C235 277 300 286 385 326 C361 407 276 450 191 438 C109 439 47 389 31 296Z"/></clipPath>' +
+    '<clipPath id="bloomWholeClip"><path d="M18 280 C13 182 66 80 157 42 C259 -2 367 61 410 172 C443 268 395 361 306 414 C214 463 93 433 36 354 C21 332 16 306 18 280Z"/></clipPath>' +
+    '<filter id="revealSoft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4.5"/></filter>' +
+    '<mask id="bloomRevealMask" maskUnits="userSpaceOnUse" x="-30" y="-30" width="470" height="500"><rect x="-30" y="-30" width="470" height="500" fill="#000"/>' +
+      '<g filter="url(#revealSoft)">' +
+      '<ellipse class="reveal-petal reveal-center" cx="220" cy="205" rx="1" ry="1" data-cx="220" data-cy="205" data-rx="58" data-ry="53" fill="#fff"/>' +
+      '<ellipse class="reveal-petal reveal-inner" cx="220" cy="205" rx="1" ry="1" data-cx="207" data-cy="143" data-rx="75" data-ry="72" fill="#fff"/>' +
+      '<ellipse class="reveal-petal reveal-inner" cx="220" cy="205" rx="1" ry="1" data-cx="160" data-cy="207" data-rx="84" data-ry="70" fill="#fff"/>' +
+      '<ellipse class="reveal-petal reveal-inner" cx="220" cy="205" rx="1" ry="1" data-cx="281" data-cy="205" data-rx="88" data-ry="72" fill="#fff"/>' +
+      '<ellipse class="reveal-petal reveal-inner" cx="220" cy="205" rx="1" ry="1" data-cx="219" data-cy="271" data-rx="98" data-ry="78" fill="#fff"/>' +
+      '<ellipse class="reveal-petal reveal-outer" cx="220" cy="205" rx="1" ry="1" data-cx="130" data-cy="87" data-rx="108" data-ry="98" fill="#fff"/>' +
+      '<ellipse class="reveal-petal reveal-outer" cx="220" cy="205" rx="1" ry="1" data-cx="288" data-cy="91" data-rx="112" data-ry="98" fill="#fff"/>' +
+      '<ellipse class="reveal-petal reveal-outer" cx="220" cy="205" rx="1" ry="1" data-cx="57" data-cy="220" data-rx="108" data-ry="126" fill="#fff"/>' +
+      '<ellipse class="reveal-petal reveal-outer" cx="220" cy="205" rx="1" ry="1" data-cx="375" data-cy="220" data-rx="109" data-ry="126" fill="#fff"/>' +
+      '<ellipse class="reveal-petal reveal-outer" cx="220" cy="205" rx="1" ry="1" data-cx="99" data-cy="326" data-rx="126" data-ry="108" fill="#fff"/>' +
+      '<ellipse class="reveal-petal reveal-outer" cx="220" cy="205" rx="1" ry="1" data-cx="214" data-cy="377" data-rx="133" data-ry="92" fill="#fff"/>' +
+      '<ellipse class="reveal-petal reveal-outer" cx="220" cy="205" rx="1" ry="1" data-cx="326" data-cy="330" data-rx="119" data-ry="106" fill="#fff"/>' +
+      '</g>' +
+      '<path class="reveal-final" d="M18 280 C13 182 66 80 157 42 C259 -2 367 61 410 172 C443 268 395 361 306 414 C214 463 93 433 36 354 C21 332 16 306 18 280Z" fill="#fff" opacity="0"/></mask>' +
+  '</defs>' +
+  '<g class="photo-stem"><path class="stem-mask-path" d="M221 817 C224 727 201 681 179 624 C153 553 158 470 199 350" fill="none" stroke="url(#stemPhotoG)" stroke-width="8" stroke-linecap="round" stroke-dasharray="1200" stroke-dashoffset="1200"/><path class="stem-mask-path" d="M218 813 C219 725 197 680 176 624 C153 553 161 476 198 354" fill="none" stroke="rgba(230,221,151,.34)" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="1200" stroke-dashoffset="1200"/></g>' +
+  '<g class="photo-piece photo-leaf photo-leaf-mid" style="transform-origin:166px 516px;opacity:0"><path d="M168 518 C130 501 82 473 38 428 C89 421 137 439 166 483 C176 498 176 510 168 518Z" fill="url(#leafPhotoG1)"/><path d="M164 509 C127 477 86 449 44 432" fill="none" stroke="#c7c889" stroke-opacity=".52" stroke-width="1.3"/></g>' +
+  '<g class="photo-piece photo-leaf photo-leaf-lower" style="transform-origin:177px 590px;opacity:0"><path d="M176 591 C218 531 282 492 348 511 C321 554 247 593 176 591Z" fill="url(#leafPhotoG2)"/><path d="M181 586 C230 558 286 532 341 514" fill="none" stroke="#d4d08b" stroke-opacity=".48" stroke-width="1.4"/></g>' +
+  '<g class="photo-piece photo-leaf photo-leaf-lower" style="transform-origin:189px 671px;opacity:0"><path d="M190 671 C142 625 88 614 43 651 C83 685 142 694 190 671Z" fill="url(#leafPhotoG1)"/><path d="M184 667 C135 654 90 649 49 652" fill="none" stroke="#d0ce88" stroke-opacity=".45" stroke-width="1.3"/></g>' +
+  '<g class="photo-bloom" style="transform-origin:202px 356px">' +
+    '<g class="photo-piece photo-petal petal-back" style="transform-origin:202px 344px;opacity:0"><g clip-path="url(#bloomBackClip)">' + image + '</g></g>' +
+    '<g class="photo-piece photo-petal petal-left" style="transform-origin:188px 336px;opacity:0"><g clip-path="url(#bloomLeftClip)">' + image + '</g></g>' +
+    '<g class="photo-piece photo-petal petal-right" style="transform-origin:214px 338px;opacity:0"><g clip-path="url(#bloomRightClip)">' + image + '</g></g>' +
+    '<g class="photo-piece photo-petal petal-cup" style="transform-origin:204px 342px;opacity:0"><g clip-path="url(#bloomCupClip)">' + image + '</g></g>' +
+    '<g class="photo-piece photo-petal petal-inner" style="transform-origin:216px 304px;opacity:0"><g clip-path="url(#bloomInnerClip)">' + image + '</g></g>' +
+    '<g class="photo-piece photo-petal petal-heart" style="transform-origin:223px 274px;opacity:0"><g clip-path="url(#bloomHeartClip)">' + image + '</g></g>' +
+    '<g class="photo-piece photo-petal petal-front" style="transform-origin:205px 355px;opacity:0"><g clip-path="url(#bloomFrontClip)">' + image + '</g></g>' +
+    '<g class="photo-piece petal-finish" style="opacity:1" mask="url(#bloomRevealMask)"><g clip-path="url(#bloomWholeClip)">' + image + '</g></g>' +
+  '</g>';
+}
+
+function playGrowingPeony(){
+  var svg = document.getElementById('bloom');
+  var morningLight = document.getElementById('morningLight');
+  var opener = document.querySelector('.opener');
+  var letter = document.querySelector('.letter');
+  var flowerText = document.querySelector('.flower-text');
+  var again = document.getElementById('again');
+  var stem = svg.querySelector('.photo-stem');
+  var stemMaskPaths = toArray(svg.querySelectorAll('.stem-mask-path'));
+  var leaves = toArray(svg.querySelectorAll('.photo-leaf'));
+  var heart = svg.querySelector('.petal-heart');
+  var inner = svg.querySelector('.petal-inner');
+  var cup = svg.querySelector('.petal-cup');
+  var back = svg.querySelector('.petal-back');
+  var sides = [svg.querySelector('.petal-left'), svg.querySelector('.petal-right')];
+  var front = svg.querySelector('.petal-front');
+  var finish = svg.querySelector('.petal-finish');
+  var bloom = svg.querySelector('.photo-bloom');
+  var revealPetals = toArray(svg.querySelectorAll('.reveal-petal'));
+  var revealFinal = svg.querySelector('.reveal-final');
+
+  if (REDUCE_MOTION){
+    stem.style.opacity = 1;
+    stemMaskPaths.forEach(function(path){ path.style.strokeDashoffset = 0; });
+    leaves.forEach(function(el){ el.style.opacity=1; el.style.transform='none'; });
+    toArray(svg.querySelectorAll('.photo-petal')).forEach(function(el){ el.style.opacity=0; });
+    finish.style.opacity = 1;
+    revealFinal.style.opacity = 1;
+    svg.style.transform = 'translateY(-1.4vh) scale(0.82)';
+    document.body.style.backgroundColor = '#654d46';
+    morningLight.style.opacity = 1;
+    opener.style.color = '#72595a';
+    letter.style.opacity = 1;
+    flowerText.style.opacity = 1;
+    again.style.opacity = .78;
+    showNote(true);
+    return;
+  }
+
+  var tl = anime.timeline({ easing:'easeInOutSine' });
+  window.__peonyTl = tl;
+
+  tl.add({ targets:stemMaskPaths, strokeDashoffset:[anime.setDashoffset,0], duration:2600, delay:anime.stagger(180), easing:'easeInOutCubic' }, 250);
+  tl.add({ targets:morningLight, opacity:[0,1], duration:7600, easing:'easeInOutSine' }, 550);
+  tl.add({ targets:document.body, backgroundColor:['#20191f','#654d46'], duration:7600, easing:'easeInOutSine' }, 450);
+  tl.add({ targets:opener, color:['#d8c9c6','#72595a'], duration:6200, easing:'easeInOutSine' }, 850);
+
+  tl.add({ targets:leaves[0], opacity:[0,1], scaleX:[.18,1], scaleY:[.08,1], rotate:[-7,0], duration:1900, easing:'easeOutQuart' }, 1300);
+  tl.add({ targets:leaves[1], opacity:[0,1], scaleX:[.18,1], scaleY:[.08,1], rotate:[6,0], duration:1900, easing:'easeOutQuart' }, 2050);
+  tl.add({ targets:leaves[2], opacity:[0,1], scaleX:[.18,1], scaleY:[.08,1], rotate:[-5,0], duration:1900, easing:'easeOutQuart' }, 2550);
+
+  /* One softly feathered reveal expands continuously from the flower's heart.
+     Keeping a single mask removes every segmented on/off transition. */
+  tl.add({ targets:revealPetals[0], rx:[1,260], ry:[1,245],
+    duration:5550, easing:'easeInOutSine' }, 2550);
+  tl.add({ targets:bloom, scale:[.18,1.035], translateY:[48,0], rotate:[-3,0], duration:5550, easing:'easeInOutSine' }, 2550);
+  tl.add({ targets:svg, scale:[1.05,.82], translateY:['3.8vh','-1.4vh'], duration:1650, easing:'easeInOutCubic' }, 7900);
+  tl.add({ targets:letter, opacity:[0,1], translateY:[12,0], duration:1050, easing:'easeOutCubic' }, 8900);
+  tl.add({ targets:flowerText, opacity:[0,1], translateY:[6,0], duration:720, easing:'easeOutCubic' }, 9250);
+  tl.add({ targets:again, opacity:[0,.78], duration:380, easing:'easeOutCubic' }, 9700);
+
+  var requestedFrame = new URLSearchParams(location.search).get('frame');
+  if (window.__PEONY_TEST_PAUSE__ || requestedFrame !== null){
+    tl.pause();
+    tl.seek(requestedFrame === null ? 0 : Math.max(0, parseInt(requestedFrame,10) || 0));
+  }
+  tl.finished.then(function(){ showNote(true); });
 }
 
 function renderArt(sp){
@@ -946,9 +1523,9 @@ function renderArt(sp){
 
 var FLOWERS = [
   { id:0, name:'Peonies', meaning:'romance, honor, a happy life together', type:'phyllo', choreo:'radial',
-    c:{ deep:'#a8506a', light:'#f0c3d3', center:'#f6e2b8', centerEdge:'#e0b878' },
-    calyx:{ deep:'#5c7a52', light:'#9ab088' },
-    stem:{ x1:72, y1:360, x2:150, y2:82, bow:30, width:3.8, color:'#7a8f6e', leafColor:'#6f8564',
+    c:{ deep:'#b85f78', light:'#f4cddd', center:'#f7e6c4', centerEdge:'#dfbd82' },
+    calyx:{ deep:'#64795a', light:'#a7b696' },
+    stem:{ x1:38, y1:360, x2:150, y2:82, bow:38, width:3.8, color:'#829476', leafColor:'#778b6d',
            leaves:[ {t:0.34,len:28,width:12,curve:1,rot:-120}, {t:0.64,len:24,width:10,curve:0.95,rot:66} ] },
     bud:{ cx:150, cy:84, len:54, w:34 },
     bloom:{ count:48, spread:17, petalLen:36, petalW:26, rotSeed:12 },
@@ -1056,7 +1633,8 @@ function getFeaturedFlower(now){
    flash of the finished flower before the timeline takes over.
    ========================================================================= */
 
-var REDUCE_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var REDUCE_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+  new URLSearchParams(location.search).get('motion') !== 'full';
 
 function toArray(nodeList){ return Array.prototype.slice.call(nodeList); }
 
@@ -1151,16 +1729,16 @@ function playEntrance(sp){
 // path does, unlike the animated path which defers it via a Promise), so
 // NOTES must already exist by the time initFlower() actually runs.
 function initFlower(){
-  var sp = getFeaturedFlower();
+  // This review prototype intentionally holds on the approved Peony. The
+  // broader rotation remains untouched and can be re-enabled for shipping.
+  var sp = FLOWERS[0];
   var svgEl = document.getElementById('bloom');
-  document.getElementById('flowerName').textContent = sp.name;
-  document.getElementById('flowerMeaning').textContent = sp.meaning;
+  document.getElementById('flowerName').textContent = 'peony';
+  document.getElementById('flowerMeaning').textContent = 'devotion & happy love';
   if (sp.id === 0){
-    // Peony: simplified illustration entrance — see renderPeonySimple /
-    // playPeonySimple above.
-    svgEl.setAttribute('viewBox', '0 0 240 380');
-    svgEl.innerHTML = renderPeonySimple(sp);
-    playPeonySimple(sp);
+    svgEl.setAttribute('viewBox', '0 0 390 844');
+    svgEl.innerHTML = renderGrowingPeony();
+    playGrowingPeony();
   } else {
     // Unchanged: the other 5 species still use the procedural SVG path.
     svgEl.setAttribute('viewBox', '0 0 220 260');
@@ -1245,8 +1823,12 @@ function draw(){
 var noteEl = document.getElementById('note');
 
 function showNote(first){
+  if (first){
+    noteEl.innerHTML = 'you make ordinary days<br>my favorite ones.';
+    return;
+  }
   var text = draw();
-  if (first || REDUCE_MOTION){
+  if (REDUCE_MOTION){
     noteEl.textContent = text;
     return;
   }
