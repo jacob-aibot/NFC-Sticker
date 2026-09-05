@@ -1517,7 +1517,7 @@ var BOTANICAL_HEROES = {
   5:{ slug:'wisteria', name:'wisteria', meaning:'enduring devotion', asset:'wisteria-botanical.png', x:-42, y:0, w:474, h:711, direction:'down', origin:'50% 9%' }
 };
 
-function renderBotanicalHero(hero){
+function renderPaintedBotanicalHero(hero){
   var startY = hero.direction === 'down' ? -28 : 872;
   return '<defs>' +
     '<filter id="speciesRevealSoft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="12"/></filter>' +
@@ -1531,7 +1531,7 @@ function renderBotanicalHero(hero){
   '</g>';
 }
 
-function playBotanicalHero(hero){
+function playPaintedBotanicalHero(hero){
   var svg = document.getElementById('bloom');
   var reveal = svg.querySelector('.species-reveal');
   var plant = svg.querySelector('.species-plant');
@@ -1960,6 +1960,9 @@ function startExperience(){
 // 13s stall) was hit once in a sandboxed test environment for this project.
 // Reduced motion skips the wait entirely: it renders the final state
 // instantly, so there's no mid-entrance swap to protect against.
+</script>
+<script src="growing-botanicals.js"></script>
+<script>
 if (REDUCE_MOTION || !(window.document && document.fonts && document.fonts.ready)){
   startExperience();
 } else {
