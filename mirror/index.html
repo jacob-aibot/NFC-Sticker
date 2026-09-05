@@ -1505,6 +1505,82 @@ function playGrowingPeony(){
   tl.finished.then(function(){ showNote(true); });
 }
 
+/* The remaining five flowers share the approved full-screen composition but
+   keep species-specific silhouettes. Their painted transparent assets remain
+   inside SVG; an animated mask grows through each plant in its natural
+   direction, while Anime.js coordinates morning light, settle and typography. */
+var BOTANICAL_HEROES = {
+  1:{ slug:'tulip', name:'tulip', meaning:'perfect love', asset:'tulip-botanical.png', x:-42, y:0, w:474, h:711, direction:'up', origin:'50% 82%' },
+  2:{ slug:'orchid', name:'orchid', meaning:'rare beauty', asset:'orchid-botanical.png', x:-42, y:0, w:474, h:711, direction:'up', origin:'50% 82%' },
+  3:{ slug:'hydrangea', name:'hydrangea', meaning:'heartfelt gratitude', asset:'hydrangea-botanical.png', x:-42, y:0, w:474, h:711, direction:'up', origin:'50% 82%' },
+  4:{ slug:'lavender', name:'lavender', meaning:'devotion & calm', asset:'lavender-botanical.png', x:-20, y:-4, w:430, h:771, direction:'up', origin:'50% 88%' },
+  5:{ slug:'wisteria', name:'wisteria', meaning:'enduring devotion', asset:'wisteria-botanical.png', x:-42, y:0, w:474, h:711, direction:'down', origin:'50% 9%' }
+};
+
+function renderBotanicalHero(hero){
+  var startY = hero.direction === 'down' ? -28 : 872;
+  return '<defs>' +
+    '<filter id="speciesRevealSoft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="12"/></filter>' +
+    '<mask id="speciesRevealMask" maskUnits="userSpaceOnUse" x="-40" y="-40" width="470" height="930">' +
+      '<rect x="-40" y="-40" width="470" height="930" fill="#000"/>' +
+      '<rect class="species-reveal" x="-30" y="'+startY+'" width="450" height="0" rx="14" fill="#fff" filter="url(#speciesRevealSoft)"/>' +
+    '</mask>' +
+  '</defs>' +
+  '<g class="species-plant" style="transform-origin:'+hero.origin+'" mask="url(#speciesRevealMask)">' +
+    '<image href="'+hero.asset+'" xlink:href="'+hero.asset+'" x="'+hero.x+'" y="'+hero.y+'" width="'+hero.w+'" height="'+hero.h+'" preserveAspectRatio="none"/>' +
+  '</g>';
+}
+
+function playBotanicalHero(hero){
+  var svg = document.getElementById('bloom');
+  var reveal = svg.querySelector('.species-reveal');
+  var plant = svg.querySelector('.species-plant');
+  var morningLight = document.getElementById('morningLight');
+  var opener = document.querySelector('.opener');
+  var letter = document.querySelector('.letter');
+  var flowerText = document.querySelector('.flower-text');
+  var again = document.getElementById('again');
+
+  if (REDUCE_MOTION){
+    reveal.setAttribute('y','-28');
+    reveal.setAttribute('height','920');
+    plant.style.transform = 'scale(1)';
+    svg.style.transform = 'translateY(-1.4vh) scale(0.82)';
+    document.body.style.backgroundColor = '#654d46';
+    morningLight.style.opacity = 1;
+    opener.style.color = '#72595a';
+    letter.style.opacity = 1;
+    flowerText.style.opacity = 1;
+    again.style.opacity = .78;
+    showNote(true);
+    return;
+  }
+
+  var tl = anime.timeline({ easing:'easeInOutSine' });
+  window.__flowerTl = tl;
+  tl.add({ targets:morningLight, opacity:[0,1], duration:6500, easing:'easeInOutSine' }, 450);
+  tl.add({ targets:document.body, backgroundColor:['#20191f','#654d46'], duration:6500, easing:'easeInOutSine' }, 350);
+  tl.add({ targets:opener, color:['#d8c9c6','#72595a'], duration:5600, easing:'easeInOutSine' }, 750);
+
+  if (hero.direction === 'down'){
+    tl.add({ targets:reveal, y:[-28,-28], height:[0,920], duration:6100, easing:'easeInOutSine' }, 400);
+  } else {
+    tl.add({ targets:reveal, y:[872,-28], height:[0,920], duration:6100, easing:'easeInOutSine' }, 400);
+  }
+  tl.add({ targets:plant, scale:[.90,1.045], duration:6100, easing:'easeOutSine' }, 400);
+  tl.add({ targets:svg, scale:[1.05,.82], translateY:['3.8vh','-1.4vh'], duration:1550, easing:'easeInOutCubic' }, 7000);
+  tl.add({ targets:letter, opacity:[0,1], translateY:[12,0], duration:1000, easing:'easeOutCubic' }, 8100);
+  tl.add({ targets:flowerText, opacity:[0,1], translateY:[6,0], duration:700, easing:'easeOutCubic' }, 8450);
+  tl.add({ targets:again, opacity:[0,.78], duration:360, easing:'easeOutCubic' }, 9000);
+
+  var requestedFrame = new URLSearchParams(location.search).get('frame');
+  if (window.__FLOWER_TEST_PAUSE__ || requestedFrame !== null){
+    tl.pause();
+    tl.seek(requestedFrame === null ? 0 : Math.max(0, parseInt(requestedFrame,10) || 0));
+  }
+  tl.finished.then(function(){ showNote(true); });
+}
+
 function renderArt(sp){
   var cx = 110, cy = 112;
   var svg = gradDefs(sp);
@@ -1729,21 +1805,34 @@ function playEntrance(sp){
 // path does, unlike the animated path which defers it via a Promise), so
 // NOTES must already exist by the time initFlower() actually runs.
 function initFlower(){
-  // This review prototype intentionally holds on the approved Peony. The
-  // broader rotation remains untouched and can be re-enabled for shipping.
-  var sp = FLOWERS[0];
+  var params = new URLSearchParams(location.search);
+  var requested = (params.get('flower') || '').toLowerCase();
+  var sp = getFeaturedFlower(new Date());
+  if (requested){
+    var requestedId = Number(requested);
+    var preview = FLOWERS.filter(function(f){
+      var hero = BOTANICAL_HEROES[f.id];
+      return f.id === requestedId || f.name.toLowerCase() === requested ||
+        (f.id === 0 && requested === 'peony') || (hero && hero.slug === requested);
+    })[0];
+    if (preview) sp = preview;
+  }
   var svgEl = document.getElementById('bloom');
-  document.getElementById('flowerName').textContent = 'peony';
-  document.getElementById('flowerMeaning').textContent = 'devotion & happy love';
   if (sp.id === 0){
+    svgEl.setAttribute('aria-label','A lush illustrated Peony growing and opening');
+    document.getElementById('flowerName').textContent = 'peony';
+    document.getElementById('flowerMeaning').textContent = 'devotion & happy love';
     svgEl.setAttribute('viewBox', '0 0 390 844');
     svgEl.innerHTML = renderGrowingPeony();
     playGrowingPeony();
   } else {
-    // Unchanged: the other 5 species still use the procedural SVG path.
-    svgEl.setAttribute('viewBox', '0 0 220 260');
-    svgEl.innerHTML = renderArt(sp);
-    playEntrance(sp);
+    var hero = BOTANICAL_HEROES[sp.id];
+    svgEl.setAttribute('aria-label','A lush illustrated '+hero.name+' growing in morning light');
+    document.getElementById('flowerName').textContent = hero.name;
+    document.getElementById('flowerMeaning').textContent = hero.meaning;
+    svgEl.setAttribute('viewBox', '0 0 390 844');
+    svgEl.innerHTML = renderBotanicalHero(hero);
+    playBotanicalHero(hero);
   }
 }
 
