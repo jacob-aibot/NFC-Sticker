@@ -1961,8 +1961,10 @@ function startExperience(){
 </script>
 <script src="growing-botanicals.js"></script>
 <script src="morning-orchid.js"></script>
-<script src="morning-finishes.js"></script>
 <script src="peony-illustration.js"></script>
+<!-- morning-finishes.js wraps the play functions above to apply one
+     shared light direction, so it must stay last. -->
+<script src="morning-finishes.js"></script>
 <script>
 if (REDUCE_MOTION || !(window.document && document.fonts && document.fonts.ready)){
   startExperience();

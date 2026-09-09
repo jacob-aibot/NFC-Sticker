@@ -116,7 +116,7 @@
   function playSingleTulip(){
     var svg=document.getElementById('bloom'),light=document.getElementById('morningLight');
     var label=document.querySelector('.opener'),note=document.querySelector('.letter'),identity=document.querySelector('.flower-text'),again=document.getElementById('again');
-    document.body.style.background='#242027';light.style.display='';label.style.color='#d8c9c6';
+    document.body.style.background='#241e25';light.style.display='';label.style.color='#d8c9c6';
     svg.style.transform='translateY(-1.4vh) scale(.82)';
     svg.setAttribute('aria-label','A single dusty pink tulip growing from a stem into a bud and slowly opening');
     var petals=svg.querySelectorAll('.tulip-petal');
@@ -126,7 +126,7 @@
     svg.querySelectorAll('.grow-organ').forEach(function(el){el.setAttribute('d',el.dataset.closed);tl.add({targets:el,d:[{value:el.dataset.folded,duration:950},{value:el.dataset.open,duration:1550}]},+el.dataset.at);});
     petals.forEach(function(el,i){el.setAttribute('d',el.dataset.bud.replace(/-?\d*\.?\d+/g,'0'));tl.add({targets:el,d:el.dataset.bud,duration:1300},2350);tl.add({targets:el,d:el.dataset.open,duration:3400},3900+i*115);});
     tl.add({targets:light,opacity:[0,1],duration:6500},500);
-    tl.add({targets:document.body,backgroundColor:['#242027','#5d4d49'],duration:6500},500);
+    tl.add({targets:document.body,backgroundColor:['#241e25','#5d4d49'],duration:6500},500);
     tl.add({targets:label,color:['#d8c9c6','#72595a'],duration:5400},900);
     tl.add({targets:note,opacity:[0,1],translateY:[8,0],duration:850},8500);
     tl.add({targets:identity,opacity:[0,1],duration:600},8750);
@@ -218,14 +218,14 @@
     var letter=document.querySelector('.letter'),identity=document.querySelector('.flower-text'),again=document.getElementById('again');
     var stems=svg.querySelectorAll('.grow-stem'),organs=svg.querySelectorAll('.grow-organ');
     if(REDUCE_MOTION){
-      svg.style.transform='translateY(-1.4vh) scale(.82)';light.style.opacity=1;document.body.style.backgroundColor='#654d46';opener.style.color='#72595a';
+      svg.style.transform='translateY(-1.4vh) scale(.82)';light.style.opacity=1;document.body.style.backgroundColor='#5d4d49';opener.style.color='#72595a';
       letter.style.opacity=1;identity.style.opacity=1;again.style.opacity=.78;showNote(true);return;
     }
     var tl=anime.timeline({autoplay:false,easing:'easeInOutSine'});window.__flowerTl=tl;
     stems.forEach(function(el){var length=el.getTotalLength();el.style.opacity=0;el.setAttribute('stroke-dasharray',length);el.setAttribute('stroke-dashoffset',length);tl.add({targets:el,opacity:[0,1],duration:100},+el.dataset.at);tl.add({targets:el,strokeDashoffset:[length,0],duration:+el.dataset.duration,easing:'easeInOutSine'},+el.dataset.at);});
     organs.forEach(function(el){el.setAttribute('d',el.dataset.closed);tl.add({targets:el,d:[{value:el.dataset.folded,duration:+el.dataset.duration*.30},{value:el.dataset.folded,duration:450},{value:el.dataset.open,duration:+el.dataset.duration*.70}],easing:'easeInOutSine'},+el.dataset.at);});
     tl.add({targets:light,opacity:[0,1],duration:6900},450);
-    tl.add({targets:document.body,backgroundColor:['#20191f','#654d46'],duration:6900},350);
+    tl.add({targets:document.body,backgroundColor:['#241e25','#5d4d49'],duration:6900},350);
     tl.add({targets:opener,color:['#d8c9c6','#72595a'],duration:5600},750);
     tl.add({targets:svg,scale:[1.05,.82],translateY:['3.8vh','-1.4vh'],duration:1600},8500);
     tl.add({targets:letter,opacity:[0,1],translateY:[12,0],duration:1000},10100);
