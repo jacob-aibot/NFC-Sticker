@@ -348,7 +348,9 @@
 // PLACEHOLDER — set to the actual local calendar date this redesigned
 // Morning Mirror ships (YYYY-MM-DD), then leave it fixed forever after.
 // Do NOT set this to "today" casually; it anchors every future rotation.
-var MIRROR_LAUNCH_DATE = '2000-01-01'; // TODO: set real launch date before shipping
+var MIRROR_LAUNCH_DATE = '2026-09-10'; // the day the sticker went up
+// How long each species holds the screen before the next one takes over.
+var DAYS_PER_FLOWER = 7;
 
 // ---- small geometry helpers ----
 
@@ -1374,10 +1376,24 @@ function seededOrder(seed){
 
 var CYCLE_SEED_SALT = 0x9E3779B9;
 var cycleOrderCache = {};
+function peonyPosition(){
+  for (var i = 0; i < FLOWERS.length; i++){ if (FLOWERS[i].id === 0) return i; }
+  return 0;
+}
+
 function fixedCycleOrder(cycleIndex){
   if (cycleOrderCache[cycleIndex]) return cycleOrderCache[cycleIndex];
   var order = seededOrder((cycleIndex * 0x1000193 + CYCLE_SEED_SALT) >>> 0);
-  if (cycleIndex > 0){
+  if (cycleIndex === 0){
+    // The very first flower anyone sees is the peony — it is the one species
+    // whose design was actually finalised, and a first impression is not the
+    // place to leave the choice to a seed. Only the opening cycle is pinned;
+    // every cycle after this one stays shuffled.
+    var peonyAt = order.indexOf(peonyPosition());
+    if (peonyAt > 0){
+      order = [order[peonyAt]].concat(order.slice(0, peonyAt), order.slice(peonyAt + 1));
+    }
+  } else {
     var prevOrder = fixedCycleOrder(cycleIndex - 1);
     var prevLast = prevOrder[prevOrder.length - 1];
     if (order[0] === prevLast){
@@ -1403,7 +1419,7 @@ function getFeaturedFlower(now){
   var today = parseLocalDateParts(now || new Date());
   var dayIndex = localDaysBetween(launch, today);
   if (dayIndex < 0) dayIndex = 0;
-  var periodIndex = Math.floor(dayIndex / 3);
+  var periodIndex = Math.floor(dayIndex / DAYS_PER_FLOWER);
   var cycleIndex = Math.floor(periodIndex / FLOWERS.length);
   var positionInCycle = periodIndex % FLOWERS.length;
   var order = fixedCycleOrder(cycleIndex);
@@ -1554,34 +1570,36 @@ function initFlower(){
    ========================================================================= */
 
 var NOTES = [
-  "You make ordinary mornings feel like they're worth getting up for.",
-  "I don't say it enough: you're the best part of my day, every single day.",
-  "Whatever's on your plate today, you've got this. You always do.",
-  "I love the way your face changes right before you laugh at your own joke.",
-  "Somewhere out there, past-me is really glad I walked up and said hi.",
-  "You're the person I want to tell things to first. Still. Always.",
-  "Today's forecast: mostly you, with a chance of me showing up with your favorite snack.",
-  "I noticed. Whatever it was you did that you thought no one saw — I noticed.",
-  "You handle hard days better than you give yourself credit for.",
-  "If I had to pick this same life again, I'd pick the version with you in it.",
-  "Go be brilliant today. I'll be here when you're done.",
-  "You are, annoyingly, always right about how long the coffee actually takes to cool.",
-  "I like you more today than the day I met you, and I liked you a lot that day.",
-  "Whatever this mirror says, the real one's better looking.",
-  "Someone out there is lucky to know you. That's me. I'm someone.",
-  "You're allowed to have an easy day too, you know.",
-  "I saved you the last of the good snacks. Don't tell anyone.",
-  "Your bad jokes are, objectively, the best bad jokes I've ever heard.",
-  "Take the compliment. You worked hard for it.",
-  "You make hard things feel a little more possible, just by being around.",
-  "I'm proud of you, for reasons you probably don't think are a big deal. They are.",
-  "Drink some water. Also, you're wonderful. Both things are true.",
-  "You have the kind of laugh that makes other people start laughing too.",
-  "Even on your worst day, you're still someone's favorite person. Mine.",
-  "This is your sign to be a little kinder to yourself today.",
-  "I like our life. I like it a lot. Thanks for building it with me.",
-  "You're doing better than you think you are.",
-  "One day I'll stop being obvious about how much I like you. Today is not that day."
+  "Statistically, you have survived 100% of your worst mornings. Undefeated.",
+  "The mirror is legally obligated to say you look fine. I'm saying it voluntarily.",
+  "Whatever your hair is doing right now — it's a choice, and I respect it.",
+  "You're about to go out there and be a functional adult. Incredible bit. Love the commitment.",
+  "Reminder: the toothpaste cap is a suggestion, and I have made my peace with that.",
+  "Nobody in that meeting knows what they're doing either. Proceed with confidence.",
+  "You have exactly enough time. You do not have enough time to check your phone first. These facts are related.",
+  "Current status: extremely attractive person reading a bathroom wall.",
+  "If anyone gives you trouble today, mention that your partner puts love notes on the wall using radio waves.",
+  "I hid a computer in the mirror so I could flirt with you before coffee. This is who you chose.",
+  "You don't have to do it well today. You just have to do it.",
+  "Hard things stay hard right up until you've done them. Then they're just Tuesday.",
+  "You've been underestimating yourself for years and been right about it exactly zero times.",
+  "Whatever you're dreading — you'll handle it, badly or beautifully, and both count.",
+  "Progress you can't see is still progress. Ask anything that's ever grown.",
+  "The version of you from a year ago would be so impressed right now.",
+  "You're allowed to do the minimum today. The minimum is still showing up.",
+  "Your standards for yourself are higher than anyone else's. Consider lowering them to merely excellent.",
+  "One thing, then the next thing. That's the entire method.",
+  "If today goes sideways, that's information, not a verdict.",
+  "I hope something small and good happens to you today, and that you think of me when it does.",
+  "Of all the ordinary mornings available to me, I'm glad these are the ones with you in them.",
+  "I still notice when you walk into a room. It hasn't worn off. I don't think it's going to.",
+  "Come home and tell me everything. Even the boring parts. Especially those.",
+  "There's nowhere I'd rather be at 7am than here, being quietly ridiculous about you.",
+  "You're my favorite person to be a little tired around.",
+  "I'd choose this. The dishes, the laundry, the whole unglamorous thing. With you.",
+  "Someone in this house is thinking about you right now. It's me. I'm in the kitchen.",
+  "I love the life we're building, and I love that you're the one building it with me.",
+  "Whatever today asks of you, you're coming home to someone who's on your side."
 ];
 
 var DECK_KEY = 'mm_deck';
