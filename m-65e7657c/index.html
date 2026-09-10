@@ -1374,9 +1374,11 @@ function mulberry32(seed){
   };
 }
 
-function seededOrder(seed){
+function seededOrder(seed, count){
   var rnd = mulberry32(seed);
-  var arr = FLOWERS.map(function(_, i){ return i; });
+  var arr = [];
+  var n = (count === undefined) ? FLOWERS.length : count;
+  for (var k = 0; k < n; k++){ arr.push(k); }
   for (var i = arr.length - 1; i > 0; i--){
     var j = Math.floor(rnd() * (i + 1));
     var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
@@ -1424,11 +1426,15 @@ function localDaysBetween(fromParts, toParts){
   return Math.round((toUTC - fromUTC) / 86400000);
 }
 
-function getFeaturedFlower(now){
+function daysSinceLaunch(now){
   var launch = parseLocalDateParts(new Date(MIRROR_LAUNCH_DATE + 'T00:00:00'));
   var today = parseLocalDateParts(now || new Date());
   var dayIndex = localDaysBetween(launch, today);
-  if (dayIndex < 0) dayIndex = 0;
+  return dayIndex < 0 ? 0 : dayIndex;
+}
+
+function getFeaturedFlower(now){
+  var dayIndex = daysSinceLaunch(now);
   var periodIndex = Math.floor(dayIndex / DAYS_PER_FLOWER);
   var cycleIndex = Math.floor(periodIndex / FLOWERS.length);
   var positionInCycle = periodIndex % FLOWERS.length;
@@ -1614,6 +1620,59 @@ var NOTES = [
   "Whatever today asks of you, you're coming home to someone who's on your side."
 ];
 
+/* ---- TODAY'S NOTE ---------------------------------------------------------
+   The note on arrival is chosen from the date rather than at random, so it is
+   the same line all day however many times the mirror is tapped, and it turns
+   over at local midnight. Day zero is NOTES[0], the line this was opened on;
+   every day after works through NOTES[1..] in a seeded shuffle, so nothing
+   repeats until the whole set has been seen. "one more" still deals at random
+   from the deck below, and is unaffected by any of this.
+   ------------------------------------------------------------------------- */
+var noteCycleCache = {};
+var NOTE_SEED_SALT = 0x85EBCA6B;
+var NOTE_MIN_GAP = 10;   // days a note is kept clear of its own last showing
+
+function dailyNoteOrder(cycleIndex, pool){
+  if (noteCycleCache[cycleIndex]) return noteCycleCache[cycleIndex];
+  // seededOrder yields 0..pool-1; shift by one so index 0 is never dealt here.
+  var order = seededOrder((cycleIndex * 0x1000193 + NOTE_SEED_SALT) >>> 0, pool)
+                .map(function(i){ return i + 1; });
+  if (cycleIndex > 0){
+    // Each cycle deals all of NOTES[1..] exactly once, but that alone only
+    // spaces repeats *within* a cycle: a note late in one cycle could land
+    // early in the next and come back two days later, which is exactly the
+    // repeat someone tapping every morning would notice. So the opening
+    // NOTE_MIN_GAP entries of a cycle are swapped clear of the closing
+    // NOTE_MIN_GAP of the one before, putting a floor under the spacing
+    // across the seam. There is always somewhere to swap to: the tail holds
+    // at most NOTE_MIN_GAP of the pool's entries and the pool is far larger.
+    var prev = dailyNoteOrder(cycleIndex - 1, pool);
+    var gap = Math.min(NOTE_MIN_GAP, Math.floor(pool / 2));
+    var tail = prev.slice(prev.length - gap);
+    for (var i = 0; i < gap; i++){
+      if (tail.indexOf(order[i]) === -1) continue;
+      for (var j = gap; j < order.length; j++){
+        if (tail.indexOf(order[j]) === -1){
+          var swap = order[i]; order[i] = order[j]; order[j] = swap;
+          break;
+        }
+      }
+    }
+  }
+  noteCycleCache[cycleIndex] = order;
+  return order;
+}
+
+function getDailyNote(now){
+  var dayIndex = daysSinceLaunch(now);
+  if (dayIndex <= 0) return NOTES[0];
+  var pool = NOTES.length - 1;
+  if (pool < 1) return NOTES[0];
+  var step = dayIndex - 1;
+  var order = dailyNoteOrder(Math.floor(step / pool), pool);
+  return NOTES[order[step % pool]];
+}
+
 var DECK_KEY = 'mm_deck';
 
 function loadDeck(){
@@ -1662,10 +1721,13 @@ var noteEl = document.getElementById('note');
 
 function showNote(first){
   if (first){
-    noteEl.textContent = NOTES[0];
+    noteEl.textContent = getDailyNote();
     return;
   }
+  // Never hand back the line already on screen — drawing the note of the day
+  // straight after showing it reads like the button did nothing.
   var text = draw();
+  if (text === noteEl.textContent && NOTES.length > 2) text = draw();
   if (REDUCE_MOTION){
     noteEl.textContent = text;
     return;
