@@ -1,4 +1,4 @@
-# NFC-Sticker
+# daily
 
 Small, self-contained web pages that a set of NTAG213 NFC stickers point to.
 Each sticker is written once with a phone (NFC Tools, iOS/Android) to a URL
@@ -14,6 +14,13 @@ One folder per tag, each with its own `index.html` so the sticker's URL has
 no filename in it (`/m-65e7657c/`, not `/m-65e7657c/index.html`). Folders are added
 as each page is actually built — this is the planned scheme, not all of it
 exists yet.
+
+**The repository name is part of the sticker URL too.** A project site is
+served at `https://<owner>.github.io/<repo>/`, so renaming the repo moves the
+whole site and GitHub does **not** redirect the old Pages path — it starts
+returning 404 immediately. This was confirmed the hard way during setup, before
+any tag had been written. Treat renaming this repository exactly like renaming
+a page folder: fine before a sticker exists, breaking afterwards.
 
 **Folder names carry a random suffix on purpose.** A sticker's URL is fixed
 the moment it goes on a wall, so the path has to be chosen once and kept. An
@@ -51,8 +58,8 @@ Pages deploys straight from a branch — no CI, no build:
 1. Repo **Settings → Pages**.
 2. **Source: Deploy from a branch**.
 3. **Branch: `main`**, folder **`/ (root)`**.
-4. Save. The site becomes available at `https://<owner>.github.io/NFC-Sticker/`,
-   and each page at e.g. `https://<owner>.github.io/NFC-Sticker/m-65e7657c/`.
+4. Save. The site becomes available at `https://<owner>.github.io/daily/`,
+   and each page at e.g. `https://<owner>.github.io/daily/m-65e7657c/`.
 
 Pages from a **private** repo needs GitHub Pro or above; on the free plan the
 repo has to be public. Either way the served page is public — it has to be,
@@ -72,7 +79,7 @@ hand per the steps above.
 
 1. Install **NFC Tools** (free, iOS/Android).
 2. Write tab → Add a record → **URL/URI**.
-3. Paste the page's full URL (e.g. `https://<owner>.github.io/NFC-Sticker/m-65e7657c/`).
+3. Paste the page's full URL (e.g. `https://<owner>.github.io/daily/m-65e7657c/`).
 4. Tap **Write**, hold the phone to the sticker.
 5. Test by tapping again before sticking it down.
 6. Do **not** use the app's lock / write-protect option. Locking an NTAG is
@@ -85,5 +92,5 @@ Every page carries `<meta name="robots" content="noindex, nofollow">`. A
 `robots.txt` in this repo would **not** work — crawlers only honour robots.txt
 at the origin root (`https://<owner>.github.io/robots.txt`), which is served by
 the separate `<owner>.github.io` repo, not by this project site. If that repo
-exists, a `Disallow: /NFC-Sticker/` there covers the whole site at the origin
+exists, a `Disallow: /daily/` there covers the whole site at the origin
 level; the per-page meta tag is what applies regardless.
