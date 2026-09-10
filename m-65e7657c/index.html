@@ -1632,11 +1632,34 @@ var noteCycleCache = {};
 var NOTE_SEED_SALT = 0x85EBCA6B;
 var NOTE_MIN_GAP = 10;   // days a note is kept clear of its own last showing
 
+/* Notes already seen outside this rotation — read on the wall before the daily
+   schedule existed, or shown as a previous opening line. The schedule cannot
+   know about those, so it would happily deal one a day or two later, which
+   lands as a repeat rather than a new note. Listing the text here holds it out
+   of the opening stretch of the first cycle; after that the ordinary spacing
+   rules take over. Safe to empty once the first cycle is behind us. */
+var RECENTLY_SEEN = [
+  "Someone in this house is thinking about you right now. It's me. I'm in the kitchen."
+];
+var RECENTLY_SEEN_HOLD = 20;   // days to keep them clear of
+
 function dailyNoteOrder(cycleIndex, pool){
   if (noteCycleCache[cycleIndex]) return noteCycleCache[cycleIndex];
   // seededOrder yields 0..pool-1; shift by one so index 0 is never dealt here.
   var order = seededOrder((cycleIndex * 0x1000193 + NOTE_SEED_SALT) >>> 0, pool)
                 .map(function(i){ return i + 1; });
+  if (cycleIndex === 0 && RECENTLY_SEEN.length){
+    var hold = Math.min(RECENTLY_SEEN_HOLD, pool - RECENTLY_SEEN.length);
+    for (var h = 0; h < hold; h++){
+      if (RECENTLY_SEEN.indexOf(NOTES[order[h]]) === -1) continue;
+      for (var k = hold; k < order.length; k++){
+        if (RECENTLY_SEEN.indexOf(NOTES[order[k]]) === -1){
+          var held = order[h]; order[h] = order[k]; order[k] = held;
+          break;
+        }
+      }
+    }
+  }
   if (cycleIndex > 0){
     // Each cycle deals all of NOTES[1..] exactly once, but that alone only
     // spaces repeats *within* a cycle: a note late in one cycle could land
