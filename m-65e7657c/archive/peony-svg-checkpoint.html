@@ -2,6 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- This page lives behind a sticker on a wall, not in search results.
+     robots.txt cannot do this job here: crawlers only honour it at the
+     origin root, which belongs to the jacob-aibot.github.io repo, not to
+     this project site. A per-page noindex is the tag that actually
+     applies to a project-Pages URL. -->
+<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#211823">
 <title>Morning Mirror</title>
@@ -101,13 +107,6 @@
     margin-bottom: -0.3rem;
   }
 
-  /* [hidden] is overridden by any element's own `display` rule per normal
-     cascade — .bloom{display:block} below would otherwise keep the SVG
-     laid out (and taking up its ~500px height) even while hidden, since
-     an author rule beats the UA stylesheet's default [hidden]{display:none}
-     regardless of selector specificity. */
-  .bloom[hidden]{ display:none; }
-
   .bloom{
     display:block;
     /* capped by vh too, not just vw/px — the viewBox is tall (240x380), so
@@ -118,53 +117,6 @@
     height:auto;
     overflow: visible;
     filter: drop-shadow(0 20px 32px rgba(0,0,0,0.5));
-  }
-
-  /* --- featured flower: pre-rendered video (Peony) --- */
-
-  .bloom-video-wrap{
-    position:relative;
-    width: min(80vw, 340px, 36vh);
-    /* 4:5 portrait — a tighter hero-shot crop than the old SVG's long-stem
-       240x380 canvas. Reserved up front via aspect-ratio (not left to the
-       video/image's own intrinsic size) so nothing shifts layout once the
-       asset actually loads — same reasoning as the font-swap guard below. */
-    aspect-ratio: 4 / 5;
-    /* dark backstop so the space itself reads as intentional canvas the
-       instant it's revealed, regardless of how fast the video/poster loads */
-    background: var(--ink);
-    border-radius: 2px;
-    overflow:hidden;
-  }
-
-  /* same [hidden]-vs-author-rule gotcha as .bloom[hidden] above */
-  .bloom-video[hidden]{ display:none; }
-
-  .bloom-video, .bloom-final{
-    display:block;
-    position:absolute;
-    inset:0;
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    /* soft-edged, not a hard rectangle — masks any imperfect background-color
-       match between the generated asset and the page's own --ink, and keeps
-       the flower feeling like it belongs to the page rather than sitting in
-       a video frame on top of it. */
-    -webkit-mask-image: radial-gradient(closest-side, black 74%, transparent 100%);
-    mask-image: radial-gradient(closest-side, black 74%, transparent 100%);
-    filter: drop-shadow(0 20px 32px rgba(0,0,0,0.5));
-  }
-
-  .bloom-final{
-    opacity:0;
-    transition: opacity 0.6s ease;
-  }
-  .bloom-final.is-visible{ opacity:1; }
-  .bloom-video.is-fading{ opacity:0; transition: opacity 0.6s ease; }
-
-  @media (prefers-reduced-motion: reduce){
-    .bloom-final{ transition:none; }
   }
 
   /* name + meaning float in the bloom's own negative space, not a label row */
@@ -179,25 +131,6 @@
     text-align:right;
     opacity:0;
     transform:translateY(8px);
-  }
-
-  /* video path (Peony): the SVG's "sits in the bloom's negative space"
-     trick assumed a canvas mostly empty except for a thin stem — a
-     pre-rendered clip fills its whole frame, so there's no safe zone to
-     float text over. It reads as a caption below the video instead, an
-     equally natural "editorial" pattern. Only overrides positioning (via
-     .bloom-zone.is-video, set only for the video path); the shared type
-     styles above are untouched, so the 5 SVG species are unaffected. */
-  .bloom-zone.is-video .flower-text{
-    position:static;
-    max-width:none;
-    margin-top: 0.9rem;
-  }
-  /* the SVG's negative margin-bottom only made sense to pull .letter up
-     into the overlapping-text layout above; the video path needs its own
-     (positive, small) gap since its text now flows normally. */
-  .bloom-zone.is-video{
-    margin-bottom: 0.2rem;
   }
 
   .flower-name{
@@ -310,16 +243,7 @@
 <div class="scene">
   <div class="composition">
     <div class="bloom-zone">
-      <!-- SVG path: still used for the 5 non-Peony species, unchanged. -->
-      <svg class="bloom" id="bloom" viewBox="0 0 220 260" role="img" aria-labelledby="bloomTitle" hidden></svg>
-      <!-- Video path: Peony only. Both video and img start with no src —
-           set only once JS has confirmed it's actually Peony's day, so no
-           other species' page load ever requests this asset. -->
-      <div class="bloom-video-wrap" id="bloomVideoWrap" hidden>
-        <video class="bloom-video" id="bloomVideo" muted playsinline disablepictureinpicture
-               preload="none" aria-hidden="true"></video>
-        <img class="bloom-final" id="bloomFinal" alt="">
-      </div>
+      <svg class="bloom" id="bloom" viewBox="0 0 220 260" role="img" aria-labelledby="bloomTitle"></svg>
       <div class="flower-text">
         <p class="flower-name" id="flowerName">&nbsp;</p>
         <p class="flower-meaning" id="flowerMeaning">&nbsp;</p>
@@ -728,16 +652,413 @@ function spikeArt(cx,cy,sp){
   return out;
 }
 
-// The Peony's procedural SVG bud-to-bloom rendering + Anime.js choreography
-// (budOutline, peonyPetalD, renderPeonyStemLeaves/Calyx/Bud/Petals,
-// renderPeonyBudBloom, setFinalPeonyState, playPeonyEntrance) used to live
-// here. It's no longer part of the live experience — the featured flower is
-// now a pre-rendered video (see initPeonyVideo below) because the realism
-// target this project is aiming for (dimensional petals, continuous organic
-// deformation, real lighting/depth) isn't reachable with flat vector shapes.
-// The full working code is preserved, not deleted: mirror/archive/
-// peony-svg-checkpoint.html is a complete standalone copy, and it's in this
-// file's git history before this comment replaced it.
+// ---- PEONY ONLY: bud-to-bloom prototype ----
+// Deliberately species-specific rather than routed through the shared
+// archetype system above — this is a genuine developmental sequence (closed
+// bud -> calyx peels open -> petals emerge from inside it -> settle), not a
+// reveal of already-finished pieces, and forcing it through the generic
+// radial/layered machinery would just recreate the old "pieces appear"
+// problem. If this reads right, the same *shape* of approach (not this
+// exact code) is the template for giving the other species real bud
+// states later — it is not meant to be reused verbatim.
+
+function budOutline(len, w){
+  var pts = [
+    [0,0],
+    [-w*0.50, -len*0.10], [-w*0.60, -len*0.40], [-w*0.40, -len*0.72], [-w*0.13, -len*0.94],
+    [0, -len],
+    [w*0.13, -len*0.94], [w*0.40, -len*0.72], [w*0.60, -len*0.40], [w*0.50, -len*0.10]
+  ];
+  return smoothClosedPath(pts);
+}
+
+// IMPORTANT: the initial stroke-dasharray/stroke-dashoffset placeholder
+// must be set as a plain XML attribute here, never inside style="...".
+// anime.js's setDashoffset() sets the real dasharray via setAttribute(),
+// which an inline-style value would permanently outrank in the cascade —
+// the dash pattern would then never actually engage and the "draw" reveal
+// would silently render as a fully-solid line from frame one. (This same
+// mistake is present in stemAndLeaves/spikeArt/petalLayer above, which the
+// other five species still use — not fixed there this round, out of scope,
+// but worth fixing in the same pass as their own choreography work.)
+// peony-only stem curve: a true two-control-point cubic (an S, not a single
+// bow) instead of the shared stemD()'s symmetric one-bow quadratic-via-cubic
+// — pulls opposite directions near each end, which reads as a real stem's
+// natural sway rather than one clean arc. Shared stemD() is untouched (still
+// used by the other five species) — this is additive, peony-scoped.
+function peonyStemControls(x1,y1,x2,y2,bow){
+  var c1x = x1 + bow, c1y = y1 - (y1-y2)*0.28;
+  var c2x = x2 - bow*0.85, c2y = y2 + (y1-y2)*0.30;
+  return [[x1,y1],[c1x,c1y],[c2x,c2y],[x2,y2]];
+}
+function peonyStemD(x1,y1,x2,y2,bow){
+  var c = peonyStemControls(x1,y1,x2,y2,bow);
+  return 'M'+c[0]+' C'+c[1]+' '+c[2]+' '+c[3];
+}
+
+function renderPeonyStemLeaves(sp){
+  var s = sp.stem;
+  var x1 = s.x1, y1 = s.y1, x2 = s.x2, y2 = s.y2;
+  var ctrl = peonyStemControls(x1,y1,x2,y2,s.bow||0);
+  var out = '<path id="stemPath" d="'+peonyStemD(x1,y1,x2,y2,s.bow||0)+'" fill="none" stroke="'+s.color+'" stroke-width="'+(s.width||3)+'" stroke-linecap="round" stroke-dasharray="1200" stroke-dashoffset="1200" style="transform-origin:'+x1+'px '+y1+'px;"/>';
+  (s.leaves||[]).forEach(function(L, i){
+    var base = bez(ctrl[0], ctrl[1], ctrl[2], ctrl[3], L.t);
+    var d = leafD(L.len, L.width, L.curve||1);
+    var stroke = shadeColor(s.leafColor, -0.25);
+    // per-leaf 3D pose, adapted from gmpsankalpa/Flower-animation's leaf
+    // treatment: each leaf gets its own compound rotateX+rotateY resting
+    // tilt (alternating toward/away from camera) instead of every leaf
+    // sweeping through the identical rotateY-only arc — real leaves on a
+    // stem don't all face the same way. rotateX is 0 while furled (flat
+    // against the stem) and opens to its resting tilt as the leaf grows.
+    var ryFurled = -60 - ((i*9)%16);
+    var ryFinal = -6 - ((i*11)%18);
+    var rxFinal = ((i%2) ? 1 : -1) * (16 + (i*7)%16);
+    // static position/rotation on the outer <g> (attribute transform);
+    // the inner .js-leaf is CSS-transform-only (rotateY/rotateX hinge +
+    // scale) so the two never fight over the same "transform" — see
+    // stemAndLeaves above for the same rule applied to the other five
+    // species.
+    out += '<g transform="translate('+base[0]+','+base[1]+') rotate('+L.rot+')">' +
+             '<g class="js-leaf" data-ry-furled="'+ryFurled+'" data-ry-final="'+ryFinal+'" data-rx-final="'+rxFinal+'" ' +
+                'style="transform-origin:0px 0px; transform:rotateY('+ryFurled+'deg) rotateX(0deg) scaleY(0.16) scaleX(0.3);">' +
+               '<path d="'+d+'" fill="'+s.leafColor+'" stroke="'+stroke+'" stroke-width="0.5" stroke-opacity="0.4"/>' +
+             '</g>' +
+           '</g>';
+  });
+  return out;
+}
+
+// three overlapping calyx lobes: closed, they read as one bud silhouette;
+// open, they become the visible sepals at the base of the bloom — the same
+// elements do both jobs, so there is no swap or cross-fade, just rotation.
+function renderPeonyCalyx(sp){
+  var bud = sp.bud, cc = sp.calyx;
+  var lobes = [
+    { closed:-6, open:-58, scale:1.0,  tone:0 },
+    { closed:3,  open:6,   scale:0.92, tone:1 },
+    { closed:10, open:60,  scale:1.02, tone:0 }
+  ];
+  var deep = cc.deep, light = mixColor(cc.deep, cc.light, 0.55);
+  var out = '';
+  lobes.forEach(function(L){
+    var d = budOutline(bud.len*L.scale, bud.w*0.6*L.scale);
+    var fill = L.tone ? light : deep;
+    var stroke = shadeColor(deep, -0.22);
+    out += '<g transform="translate('+bud.cx+','+bud.cy+')">' +
+             '<g class="js-calyx-lobe" data-closed="'+L.closed+'" data-open="'+L.open+'" ' +
+                'style="transform-origin:0px 0px; transform:rotate('+L.closed+'deg);">' +
+               '<path d="'+d+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="0.55" stroke-opacity="0.5"/>' +
+             '</g>' +
+           '</g>';
+  });
+  return out;
+}
+
+// a single light sketch line around the bud, drawn in via stroke-dashoffset
+// just before the calyx swells — the one place the "hand-drawn" idea is
+// used, and only once, on one shape, not tripled or jittered.
+function renderPeonyBud(sp){
+  var bud = sp.bud;
+  var sketchColor = mixColor(sp.calyx.deep, '#f6ece4', 0.4);
+  var sketch = '<g transform="translate('+bud.cx+','+bud.cy+')">' +
+      '<path class="js-bud-sketch" d="'+budOutline(bud.len*1.06, bud.w*1.1)+'" fill="none" stroke="'+sketchColor+'" ' +
+      'stroke-width="0.85" stroke-linejoin="round" stroke-dasharray="280" stroke-dashoffset="280" opacity="0.6"/>' +
+    '</g>';
+  return sketch +
+    '<g class="js-bud-swell" style="transform-origin:'+bud.cx+'px '+bud.cy+'px; transform:scale(0.7);">' +
+      renderPeonyCalyx(sp) +
+    '</g>';
+}
+
+// same phyllotaxis scatter as the shared archetype, but centered exactly on
+// the bud's own pivot so petals visibly emerge from where the bud was,
+// rather than from their own independent position.
+//
+// Two treatments, split by t (1=outermost/largest, 0=innermost/smallest):
+//   - inner/middle (~75% of petals): TRUE PATH MORPH. petalD() always
+//     produces the same point count regardless of its params, so calling
+//     it twice — once "furled" (narrow, tight, barely-rounded tip), once
+//     "open" (the real final shape) — gives two `d` strings anime can
+//     tween directly, number-for-number. Combined with a fold->final
+//     rotate and a scale-up, the petal doesn't just appear at size, its
+//     actual silhouette unfurls into shape.
+//   - outer guard ring (largest, most prominent, ~25%): the sketch
+//     outline-draw + color-fill treatment already proven on tulips —
+//     reserved for these few big shapes since 36 individual sketch draws
+//     would be noisy, not readable as "hand-drawn".
+// peony-only petal profile — same 13-point structure as petalD() (so the
+// morph tween below still interpolates number-for-number) but the width
+// envelope keeps the tip blunt instead of tapering to a sharp point.
+// petalD's tip always collapses to zero width (sin(pi*1)=0), which reads
+// fine for a single tulip petal but turns a 40+ petal peony into a thin
+// spiky star. Capping u short of 1 leaves real width at the tip, and
+// smoothClosedPath rounds that into a soft, peony-like petal end.
+function peonyPetalD(len, baseW, curveL, curveR, tipSkew, tipRound){
+  tipRound = (tipRound == null) ? 0.24 : tipRound;
+  tipSkew = tipSkew || 0;
+  var asym = (curveR - curveL) * 0.5;
+  var fullness = (curveL + curveR) / 2;
+  var ruffleAmp = 0.1 * fullness;
+  var ruffleFreq = 2.6 + (tipSkew % 1) * 0.8;
+  var phase = tipSkew * 4.1;
+  var half = 6;
+  var pts = [];
+  var i, u, floor, w;
+  for (i=0; i<=half; i++){
+    u = i/half;
+    floor = Math.max(Math.min(u, 0.9), Math.min(0.85, Math.max(0.03, tipRound)));
+    w = baseW*0.5*fullness*Math.pow(Math.sin(Math.PI*floor), 0.7) * (1 - asym*0.35);
+    w *= 1 + ruffleAmp*Math.sin(u*ruffleFreq*Math.PI*2 + phase);
+    pts.push([-Math.max(w,0.35), -u*len]);
+  }
+  for (i=half; i>=0; i--){
+    u = i/half;
+    floor = Math.max(Math.min(u, 0.9), Math.min(0.85, Math.max(0.03, tipRound)));
+    w = baseW*0.5*fullness*Math.pow(Math.sin(Math.PI*floor), 0.7) * (1 + asym*0.35);
+    w *= 1 + ruffleAmp*Math.sin(u*ruffleFreq*Math.PI*2 + phase + 1.7);
+    pts.push([Math.max(w,0.35), -u*len]);
+  }
+  return smoothClosedPath(pts);
+}
+
+function renderPeonyPetals(sp){
+  var out = '';
+  var b = sp.bloom, cx = sp.bud.cx, cy = sp.bud.cy;
+  var golden = 137.508;
+  var n = b.count;
+  var shadow = shadeColor(sp.c.deep, -0.3);
+  var highlight = mixColor(sp.c.deep, sp.c.light, 0.88);
+  for (var i=0;i<n;i++){
+    var t = 1 - i/(n-1);
+    var r = b.spread * Math.pow(t, 0.56);
+    var ang = i * golden + b.rotSeed;
+    var fill = t < 0.5 ? mixColor(highlight, sp.c.deep, t*2) : mixColor(sp.c.deep, shadow, (t-0.5)*2);
+    var sizeT = 0.55 + 0.6*t;
+    var len = b.petalLen * sizeT;
+    var w = b.petalW * sizeT;
+    var p = pt(cx, cy, r, ang);
+    var faceAng = ang + (((i*53)%9)-4)*2.2;
+    var skew = (((i*31)%7)-3)*0.8;
+    var stroke = shadeColor(fill, -0.28);
+
+    if (t > 0.75){
+      // outer guard petal: sketch-draw then color-fill, static position
+      var openD = peonyPetalD(len, w, 1.08, 0.92, skew, 0.55);
+      out += '<g transform="translate('+p[0]+','+p[1]+') rotate('+faceAng+')">' +
+               '<path class="js-petal-draw-big" data-t="'+t.toFixed(3)+'" d="'+openD+'" fill="'+fill+'" fill-opacity="0" stroke="'+stroke+'" stroke-width="0.55" stroke-opacity="0.6" stroke-linejoin="round" stroke-dasharray="300" stroke-dashoffset="300"/>' +
+             '</g>';
+    } else {
+      // inner/middle petal: furled -> open path morph + fold-open rotate + scale.
+      // Three waypoints (furled -> half-open -> open), not two, so the single
+      // continuous tween traces an actual unfurl curve instead of a straight
+      // linear interpolation between two states — the Codrops/anime.js
+      // multi-waypoint `d:[...]` pattern (ShapeMorphIdeas' demo1/demo4, which
+      // tween `d` through a whole array of shapes in one call, no stitching).
+      var openD = peonyPetalD(len, w, 1.08, 0.92, skew, 0.55);
+      var furledD = peonyPetalD(len*0.72, w*0.3, 1, 1, 0, 0.2);
+      var midD = peonyPetalD(len*0.88, w*0.58, 1.04, 0.96, skew*0.5, 0.4);
+      var foldAng = faceAng * 0.35 + (((i*17)%5)-2)*3;
+      var midAng = foldAng + (faceAng - foldAng) * 0.55;
+      out += '<g transform="translate('+p[0]+','+p[1]+')">' +
+               '<g class="js-petal-pop" data-t="'+t.toFixed(3)+'" data-fold-rot="'+foldAng.toFixed(2)+'" data-mid-rot="'+midAng.toFixed(2)+'" data-final-rot="'+faceAng.toFixed(2)+'" ' +
+                  'style="transform-origin:0px 0px; opacity:0; transform:rotate('+foldAng.toFixed(2)+'deg) scale(0.22);">' +
+                 '<path class="js-petal-morph" data-t="'+t.toFixed(3)+'" data-mid-d="'+midD+'" data-open-d="'+openD+'" d="'+furledD+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="0.5" stroke-opacity="0.5"/>' +
+               '</g>' +
+             '</g>';
+    }
+  }
+  if (sp.center){
+    out += '<g class="js-center-pop" style="transform-origin:'+cx+'px '+cy+'px; transform:scale(0);">' +
+             centerDisc(cx, cy, sp.center, 'cg'+sp.id) +
+           '</g>';
+  }
+  return out;
+}
+
+function renderPeonyBudBloom(sp){
+  var svg = gradDefs(sp);
+  svg += renderPeonyStemLeaves(sp);
+  svg += renderPeonyBud(sp);
+  svg += '<g class="js-bloom-settle" style="transform-origin:'+sp.bud.cx+'px '+sp.bud.cy+'px;">' +
+           renderPeonyPetals(sp) +
+         '</g>';
+  return svg;
+}
+
+function setFinalPeonyState(svg){
+  var stemPath = svg.querySelector('#stemPath');
+  if (stemPath){ stemPath.style.strokeDasharray = 'none'; stemPath.style.strokeDashoffset = 0; stemPath.style.transform = 'rotate(0deg)'; }
+  toArray(svg.querySelectorAll('.js-leaf')).forEach(function(el){
+    var ry = el.getAttribute('data-ry-final') || -8;
+    var rx = el.getAttribute('data-rx-final') || 0;
+    el.style.transform = 'rotateY('+ry+'deg) rotateX('+rx+'deg) scaleY(1) scaleX(1)';
+  });
+  var sketch = svg.querySelector('.js-bud-sketch');
+  if (sketch){ sketch.style.strokeDashoffset = 0; sketch.style.opacity = 0; }
+  var swell = svg.querySelector('.js-bud-swell');
+  if (swell) swell.style.transform = 'scale(1)';
+  toArray(svg.querySelectorAll('.js-calyx-lobe')).forEach(function(el){
+    el.style.transform = 'rotate(' + el.getAttribute('data-open') + 'deg)';
+  });
+  toArray(svg.querySelectorAll('.js-petal-pop')).forEach(function(el){
+    el.style.opacity = 1;
+    el.style.transform = 'rotate(' + el.getAttribute('data-final-rot') + 'deg) scale(1)';
+  });
+  toArray(svg.querySelectorAll('.js-petal-morph')).forEach(function(el){
+    el.setAttribute('d', el.getAttribute('data-open-d'));
+  });
+  toArray(svg.querySelectorAll('.js-petal-draw-big')).forEach(function(el){
+    el.style.strokeDashoffset = 0; el.setAttribute('fill-opacity','1');
+  });
+  toArray(svg.querySelectorAll('.js-center-pop')).forEach(function(el){ el.style.transform = 'scale(1)'; });
+  var settle = svg.querySelector('.js-bloom-settle');
+  if (settle) settle.style.transform = 'scale(1) rotate(0deg)';
+}
+
+// Stages: stem grows -> leaves hinge open -> bud sketches in and swells ->
+// calyx peels open -> petals respond mid-peel and unfurl -> whole bloom
+// settles while the last petals are still finishing -> name/meaning ->
+// letter. No stage waits for the previous one to fully stop before the
+// next begins — everything is built from long, overlapping tweens rather
+// than a sequence of independently-eased segments, specifically to avoid
+// the zero-motion holds and velocity seams a frame-by-frame motion audit
+// found in the earlier version (~120ms dead stop at the old bud "hold",
+// a ~10x velocity jump at the old stem draw->spring-back boundary, and a
+// jittery settle-after-full-stop). ~3.0s measured.
+function playPeonyEntrance(sp){
+  var svg = document.getElementById('bloom');
+  var flowerText = document.querySelector('.flower-text');
+  var letter = document.querySelector('.letter');
+  var again = document.getElementById('again');
+
+  if (REDUCE_MOTION){
+    setFinalPeonyState(svg);
+    flowerText.style.opacity = 1; flowerText.style.transform = 'none';
+    letter.style.opacity = 1; letter.style.transform = 'none';
+    again.style.opacity = 0.85;
+    showNote(true);
+    return;
+  }
+
+  var stemPath = svg.querySelector('#stemPath');
+  var leaves = toArray(svg.querySelectorAll('.js-leaf'));
+  var budSketch = svg.querySelector('.js-bud-sketch');
+  var budSwell = svg.querySelector('.js-bud-swell');
+  var lobes = toArray(svg.querySelectorAll('.js-calyx-lobe'));
+  var petalsMorph = svg.querySelectorAll('.js-petal-pop');
+  // the .js-petal-pop <g> carries opacity/rotate/scale; the actual `d`
+  // (and data-mid-d/data-open-d) live on its child .js-petal-morph <path> —
+  // tweening `d` on the <g> was a no-op (a <g> has no d attribute), so the
+  // "path morph" never actually ran; this was found while auditing for
+  // Step 1 and is fixed here by tweening the correct element.
+  var petalPaths = svg.querySelectorAll('.js-petal-morph');
+  var petalsBig = svg.querySelectorAll('.js-petal-draw-big');
+  var centerPop = svg.querySelectorAll('.js-center-pop');
+  var bloomSettle = svg.querySelector('.js-bloom-settle');
+
+  var t0 = performance.now();
+  var tl = anime.timeline({ easing:'easeOutCubic' });
+  window.__peonyTl = tl; // testing hook: lets a test harness pause+seek to an exact stage
+
+  // stem: draws in, then a spring-back sway that starts well before the
+  // draw finishes (not 20ms before it, as before) — the two motions blend
+  // instead of the second one starting cold right as the first decays.
+  tl.add({ targets: stemPath, strokeDashoffset:[anime.setDashoffset,0], duration:480, easing:'easeInOutSine' }, 0);
+  tl.add({ targets: stemPath, rotate:[-2.4,0], duration:520, easing:'easeOutBack(1.4)' }, 300);
+
+  // leaves: length extends first (scaleY), then width unrolls (scaleX) —
+  // two overlapping tweens on the same element, closer to how a real leaf
+  // unfurls than one uniform scale — plus a per-leaf rotateY+rotateX hinge
+  // (adapted from gmpsankalpa/Flower-animation's compound leaf tilts) so
+  // each leaf opens to its own 3D pose instead of every leaf sweeping
+  // through an identical rotateY-only arc. The stagger is jittered rather
+  // than a uniform anime.stagger() — real leaf emergence isn't a perfectly
+  // even cascade, and a small per-leaf offset on top of the base spacing
+  // reads as less mechanical (also adapted from the reference, whose
+  // per-leaf animation-delays are hand-varied, not a linear sequence).
+  var leafDelay = function(el, i){ return i*95 + ((i*53)%37); };
+  tl.add({ targets: leaves,
+    rotateY: function(el){ return [parseFloat(el.getAttribute('data-ry-furled')), parseFloat(el.getAttribute('data-ry-final'))]; },
+    rotateX: function(el){ return [0, parseFloat(el.getAttribute('data-rx-final'))]; },
+    scaleY:[0.16,1], duration:360, easing:'easeOutSine', delay: leafDelay }, 320);
+  tl.add({ targets: leaves, scaleX:[0.3,1], duration:340, easing:'easeOutBack', delay: leafDelay }, 460);
+
+  var budStart = 660;
+  tl.add({ targets: budSketch, strokeDashoffset:[anime.setDashoffset,0], duration:260, easing:'easeInOutSine' }, budStart);
+  tl.add({ targets: budSwell, scale:[0.7,1], duration:270, easing:'easeOutSine' }, budStart+90);
+
+  // calyx starts peeling before the swell tween fully finishes (swell ends
+  // at budStart+90+270=1020; the peel starts at 950, 70ms before that) —
+  // no held pause. The old version had a deliberate 140ms dead stop here
+  // ("a bud exists, sitting still"); that read fine as a narrative beat but
+  // is exactly the kind of visible wait this pass removes.
+  var calyxStart = budStart + 90 + 270 - 70;
+  tl.add({ targets: budSketch, opacity:[0.6,0], duration:300, easing:'easeInOutSine' }, calyxStart);
+  tl.add({ targets: lobes, rotate: function(el){ return [parseFloat(el.getAttribute('data-closed')), parseFloat(el.getAttribute('data-open'))]; },
+    duration:420, easing:'easeInOutSine', delay: anime.stagger(60) }, calyxStart);
+
+  // inner/middle petals start well before the calyx finishes peeling
+  // (calyx runs calyxStart..calyxStart+420; petals start 150ms in, so
+  // there's ~270ms of genuine overlap) — petals respond while the bud is
+  // still opening, not after. The `d` morph now runs on the actual path
+  // element through three waypoints (furled -> half-open -> open) in one
+  // continuous tween, the multi-waypoint pattern from Codrops' anime.js
+  // ShapeMorphIdeas demos (`d: this.paths`, one tween through several
+  // shapes rather than several stitched tweens) — opacity/rotate/scale
+  // ride along in the same call on the same schedule so nothing here is
+  // a separate stage, just more properties on one continuous motion.
+  var petalStart = calyxStart + 150;
+  tl.add({ targets: centerPop, scale:[0,1], duration:260, easing:'easeOutBack' }, petalStart);
+  tl.add({ targets: petalsMorph,
+    opacity:[0,1],
+    rotate: function(el){ return [parseFloat(el.getAttribute('data-fold-rot')), parseFloat(el.getAttribute('data-mid-rot')), parseFloat(el.getAttribute('data-final-rot'))]; },
+    scale:[0.22, 0.62, 1],
+    duration:460, easing:'easeOutSine',
+    delay: function(el){ return parseFloat(el.getAttribute('data-t'))*280; } }, petalStart);
+  tl.add({ targets: petalPaths,
+    d: function(el){ return [el.getAttribute('d'), el.getAttribute('data-mid-d'), el.getAttribute('data-open-d')]; },
+    duration:460, easing:'easeOutSine',
+    delay: function(el){ return parseFloat(el.getAttribute('data-t'))*280; } }, petalStart);
+
+  // outer guard petals: sketch outline draws in, then color washes in,
+  // overlapping its own draw tail rather than waiting for it — arriving a
+  // little after the inner petals, the way a peony's largest outer petals
+  // are often the last to fully spread.
+  var bigStart = petalStart + 130;
+  tl.add({ targets: petalsBig, strokeDashoffset:[anime.setDashoffset,0], duration:320, easing:'easeInOutSine',
+    delay: anime.stagger(60) }, bigStart);
+  tl.add({ targets: petalsBig, fillOpacity:[0,1], duration:360, easing:'easeOutSine',
+    delay: anime.stagger(60) }, bigStart+150);
+
+  var morphEnd = petalStart + 280 + 460;
+  var bigEnd = bigStart + 150 + 60*7 + 360;
+  var petalEnd = Math.max(morphEnd, bigEnd);
+
+  // whole bloom settle starts before the slowest petals fully stop (250ms
+  // before petalEnd, so it picks up while the tail of the petal motion is
+  // still live) instead of waiting for a full stop and then bouncing.
+  var settleStart = petalEnd - 250;
+  tl.add({ targets: bloomSettle, scale:[0.965,1], rotate:[-1.4,0], duration:420, easing:'easeOutElastic(1, .6)' }, settleStart);
+
+  // text starts as the settle is still finishing, not after — the same
+  // "begin before the previous motion fully stops" rule applied to the
+  // flower-to-letter handoff.
+  var textStart = settleStart + 260;
+  tl.add({ targets: flowerText, opacity:[0,1], translateY:[8,0], duration:340, easing:'easeOutCubic' }, textStart);
+  tl.add({ targets: letter, opacity:[0,1], translateY:[8,0], duration:340, easing:'easeOutCubic' }, textStart+180);
+  tl.add({ targets: again, opacity:[0,0.85], duration:260, easing:'easeOutCubic' }, textStart+380);
+
+  // testing hook: pause the fully-built timeline at t=0, only when a test
+  // harness asked for it — lets the harness seek() to an exact stage.
+  if (window.__PEONY_TEST_PAUSE__){ tl.pause(); tl.seek(0); }
+
+  tl.finished.then(function(){
+    window.__mirrorEntranceMs = Math.round(performance.now() - t0);
+    document.dispatchEvent(new CustomEvent('mirror:entrance-done', { detail:{ ms: window.__mirrorEntranceMs } }));
+    showNote(true);
+  });
+}
 
 function renderArt(sp){
   var cx = 110, cy = 112;
@@ -961,137 +1282,18 @@ function playEntrance(sp){
 // playEntrance() can call showNote(true) synchronously (the reduced-motion
 // path does, unlike the animated path which defers it via a Promise), so
 // NOTES must already exist by the time initFlower() actually runs.
-/* =========================================================================
-   FEATURED FLOWER — VIDEO PATH (Peony only, proof of concept)
-   One pre-rendered asset per species; only ever requested on that species'
-   own day (the <video>/<img> src is set here, in JS, after we already know
-   it's Peony's day — never referenced in the static HTML, so no other
-   species' page load fetches it). The other 5 species are untouched and
-   still use the procedural SVG/Anime.js path below.
-   ========================================================================= */
-
-// Every asset a future species needs, all under one predictable path —
-// see the video-generation spec for the exact naming convention this
-// scales to (flowers/<slug>.mp4, flowers/<slug>-poster.jpg, etc).
-function flowerVideoAssets(slug){
-  return {
-    mp4: 'flowers/' + slug + '.mp4',
-    poster: 'flowers/' + slug + '-poster.jpg',
-    final: 'flowers/' + slug + '-final.jpg'
-  };
-}
-
-// Reveals flower-text/letter/again with the same staggered rhythm the old
-// SVG entrance used, but via plain inline-style transitions instead of an
-// Anime.js timeline — the video path has no timeline to hang these off of,
-// and this keeps it fully independent of the SVG/Anime.js system.
-function revealComposition(){
-  var flowerText = document.querySelector('.flower-text');
-  var letter = document.querySelector('.letter');
-  var again = document.getElementById('again');
-  [[flowerText, 0], [letter, 180], [again, 380]].forEach(function(pair){
-    var el = pair[0], delay = pair[1];
-    setTimeout(function(){
-      el.style.transition = 'opacity .34s ease, transform .34s ease';
-      el.style.opacity = 1;
-      el.style.transform = 'none';
-    }, delay);
-  });
-}
-
-function initPeonyVideo(sp){
-  var wrap = document.getElementById('bloomVideoWrap');
-  var video = document.getElementById('bloomVideo');
-  var finalImg = document.getElementById('bloomFinal');
-  var flowerText = document.querySelector('.flower-text');
-  var letter = document.querySelector('.letter');
-  var again = document.getElementById('again');
-  var assets = flowerVideoAssets('peony');
-
-  wrap.hidden = false;
-  wrap.closest('.bloom-zone').classList.add('is-video');
-  finalImg.src = assets.final;
-
-  var t0 = performance.now();
-  function finish(){
-    window.__mirrorEntranceMs = Math.round(performance.now() - t0);
-    document.dispatchEvent(new CustomEvent('mirror:entrance-done', { detail:{ ms: window.__mirrorEntranceMs } }));
-    showNote(true);
-  }
-
-  if (REDUCE_MOTION){
-    finalImg.classList.add('is-visible');
-    flowerText.style.opacity = 1; flowerText.style.transform = 'none';
-    letter.style.opacity = 1; letter.style.transform = 'none';
-    again.style.opacity = 0.85;
-    finish();
-    return;
-  }
-
-  var settled = false;
-
-  // Graceful failure / slow-connection guard: if the video hasn't reached
-  // "ended" within a few seconds of us asking it to play — missing asset,
-  // decode failure, a stalled connection, autoplay blocked — stop waiting
-  // and resolve straight to the final flower. A visit must never be left
-  // stuck on a bare dark canvas.
-  function fallbackToFinal(){
-    if (settled) return;
-    settled = true;
-    clearTimeout(failSafe);
-    video.pause();
-    // hide outright, not just pause — an errored/unloaded <video> can paint
-    // the browser's own "broken media" placeholder graphic even with a
-    // poster set, and that must never show through under the final image.
-    video.hidden = true;
-    finalImg.classList.add('is-visible');
-    revealComposition();
-    finish();
-  }
-  // Comfortably longer than the target ~3-5s clip length — this is a safety
-  // net for a genuinely stuck load, not a race against normal playback.
-  var failSafe = setTimeout(fallbackToFinal, 9000);
-
-  function handoffToFinal(){
-    if (settled) return;
-    settled = true;
-    clearTimeout(failSafe);
-    video.pause();
-    video.classList.add('is-fading');
-    finalImg.classList.add('is-visible');
-    setTimeout(revealComposition, 250);
-    finish();
-  }
-
-  video.addEventListener('error', fallbackToFinal);
-  video.addEventListener('ended', handoffToFinal);
-
-  video.muted = true;
-  video.setAttribute('controlsList', 'nodownload noplaybackrate nofullscreen');
-  video.poster = assets.poster;
-  video.src = assets.mp4;
-  video.load();
-  var playPromise = video.play();
-  if (playPromise && playPromise.catch) playPromise.catch(fallbackToFinal);
-}
-
 function initFlower(){
   var sp = getFeaturedFlower();
   var svgEl = document.getElementById('bloom');
   document.getElementById('flowerName').textContent = sp.name;
   document.getElementById('flowerMeaning').textContent = sp.meaning;
   if (sp.id === 0){
-    // Peony proof of concept: pre-rendered video. See initPeonyVideo above.
-    initPeonyVideo(sp);
+    // Peony-only prototype: bud-to-bloom, its own render + choreography.
+    // The other five keep the previous, generic archetype path below.
+    svgEl.setAttribute('viewBox', '0 0 240 380');
+    svgEl.innerHTML = renderPeonyBudBloom(sp);
+    playPeonyEntrance(sp);
   } else {
-    // Unchanged: the other 5 species still use the procedural SVG path.
-    // removeAttribute, not `svgEl.hidden = false` — the `hidden` IDL
-    // property doesn't reliably reflect to the content attribute on an
-    // <svg> element (it's a plain HTMLElement/HTMLOrForeignElement mixin
-    // quirk, unlike <div>/<video> where the property works fine), found by
-    // the .bloom[hidden]{display:none} fix above otherwise leaving Tulips
-    // etc. permanently hidden.
-    svgEl.removeAttribute('hidden');
     svgEl.setAttribute('viewBox', '0 0 220 260');
     svgEl.innerHTML = renderArt(sp);
     playEntrance(sp);
