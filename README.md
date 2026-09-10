@@ -11,19 +11,27 @@ served as static files via GitHub Pages.
 ## URL structure
 
 One folder per tag, each with its own `index.html` so the sticker's URL has
-no filename in it (`/mirror/`, not `/mirror/index.html`). Folders are added
+no filename in it (`/m-65e7657c/`, not `/m-65e7657c/index.html`). Folders are added
 as each page is actually built — this is the planned scheme, not all of it
-exists yet:
+exists yet.
+
+**Folder names carry a random suffix on purpose.** A sticker's URL is fixed
+the moment it goes on a wall, so the path has to be chosen once and kept. An
+obvious path like `/mirror/` is guessable by anyone who knows the site root,
+which matters if this repo is ever made private (Pages keeps serving the site
+publicly while the source disappears — at that point the unguessable path is
+the only thing standing between a stranger and the page). Give every new page
+its own random suffix; never rename one after its sticker is written.
 
 | Path | Status | What it is |
 |---|---|---|
-| `/mirror/` | **built** | Tap-to-reveal note for the bathroom mirror; cycles through 28 lines with no repeat until the deck is exhausted. |
-| `/firsts/` | planned | "First X" wall — a tag per relationship milestone. |
-| `/timeline/` | planned | Growing memory timeline. |
-| `/mystery/` | planned | Hidden "mystery button" webpage gag. |
-| `/guestbook/` | planned | Shared guestbook — will need small persisted/shared state, architecturally kept separate from the other pages so it can add that later without touching them. |
-| `/party/` | planned | Party game / challenge randomizer. |
-| `/escape/` | planned | Escape-room-style linked puzzle chain. |
+| `/m-65e7657c/` | **built** | Tap-to-reveal note for the bathroom mirror; cycles through 28 lines with no repeat until the deck is exhausted. |
+| `/firsts-<random>/` | planned | "First X" wall — a tag per relationship milestone. |
+| `/timeline-<random>/` | planned | Growing memory timeline. |
+| `/mystery-<random>/` | planned | Hidden "mystery button" webpage gag. |
+| `/guestbook-<random>/` | planned | Shared guestbook — will need small persisted/shared state, architecturally kept separate from the other pages so it can add that later without touching them. |
+| `/party-<random>/` | planned | Party game / challenge randomizer. |
+| `/escape-<random>/` | planned | Escape-room-style linked puzzle chain. |
 
 Each page is self-contained (own inline CSS/JS, own font links) rather than
 sharing a common assets folder, so editing or breaking one page can't affect
@@ -33,6 +41,8 @@ another.
 origin, so browser storage is shared across pages that live in the same
 browser. Each page must namespace its own keys (the mirror page uses
 `mm_deck`) — this matters once more pages exist, not just for the mirror.
+Note the key is tied to the browser origin, not the folder, so renaming a
+page's folder does not reset anyone's stored state.
 
 ## GitHub Pages setup (one-time, manual)
 
@@ -42,7 +52,12 @@ Pages deploys straight from a branch — no CI, no build:
 2. **Source: Deploy from a branch**.
 3. **Branch: `main`**, folder **`/ (root)`**.
 4. Save. The site becomes available at `https://<owner>.github.io/NFC-Sticker/`,
-   and each page at e.g. `https://<owner>.github.io/NFC-Sticker/mirror/`.
+   and each page at e.g. `https://<owner>.github.io/NFC-Sticker/m-65e7657c/`.
+
+Pages from a **private** repo needs GitHub Pro or above; on the free plan the
+repo has to be public. Either way the served page is public — it has to be,
+since a stranger tapping the sticker cannot log in. Repo visibility can be
+changed at any time without touching a sticker; the URL path cannot.
 
 `.nojekyll` at the repo root disables GitHub's default Jekyll processing,
 which isn't needed for plain static HTML and can otherwise mangle files in
@@ -57,6 +72,18 @@ hand per the steps above.
 
 1. Install **NFC Tools** (free, iOS/Android).
 2. Write tab → Add a record → **URL/URI**.
-3. Paste the page's full URL (e.g. `https://<owner>.github.io/NFC-Sticker/mirror/`).
+3. Paste the page's full URL (e.g. `https://<owner>.github.io/NFC-Sticker/m-65e7657c/`).
 4. Tap **Write**, hold the phone to the sticker.
 5. Test by tapping again before sticking it down.
+6. Do **not** use the app's lock / write-protect option. Locking an NTAG is
+   permanent, and it is never needed here: the tag holds only a URL, and
+   everything that changes lives behind it.
+
+## Search engines
+
+Every page carries `<meta name="robots" content="noindex, nofollow">`. A
+`robots.txt` in this repo would **not** work — crawlers only honour robots.txt
+at the origin root (`https://<owner>.github.io/robots.txt`), which is served by
+the separate `<owner>.github.io` repo, not by this project site. If that repo
+exists, a `Disallow: /NFC-Sticker/` there covers the whole site at the origin
+level; the per-page meta tag is what applies regardless.
