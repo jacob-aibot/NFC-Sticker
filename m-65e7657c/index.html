@@ -243,7 +243,18 @@
     z-index:3;
     left:max(8.2vw, env(safe-area-inset-left));
     right:max(8.2vw, env(safe-area-inset-right));
-    top:71.5%;
+    /* Anchored to the bottom rather than the top. Note length varies from one
+       line to five, and the "one more" control is itself bottom-anchored, so
+       growing downward from a fixed top let a long note walk straight into it
+       — on every screen size at five lines, not just short ones. Growing
+       upward from a fixed clearance keeps that gap constant whatever the
+       note's length. */
+    /* Clearance is expressed in the button's own terms: it sits at 2.6vh with
+       a fixed 44px min-height, so a purely vh-based gap collides on short
+       screens where 44px is a bigger slice of the viewport. The max() keeps
+       roomier screens at their original height. */
+    bottom:max(calc(12vh + env(safe-area-inset-bottom)),
+               calc(2.6vh + 58px + env(safe-area-inset-bottom)));
     text-align:center;
     opacity:0;
     transform:translateY(10px);
@@ -305,7 +316,6 @@
 
   @media (max-height:700px){
     .bloom-zone{ inset:0; }
-    .letter{ top:70%; }
     .note{ font-size:1.72rem; }
   }
 </style>
@@ -320,7 +330,7 @@
   </div>
 
   <div class="letter">
-    <p class="note" id="note">you make ordinary days<br>my favorite ones.</p>
+    <p class="note" id="note">Someone in this house is thinking about you right now. It's me. I'm in the kitchen.</p>
     <div class="flower-text">
       <p class="flower-name" id="flowerName">peony</p>
       <p class="flower-meaning" id="flowerMeaning">devotion &amp; happy love</p>
@@ -1570,6 +1580,9 @@ function initFlower(){
    ========================================================================= */
 
 var NOTES = [
+  // NOTES[0] is the opening line: the first thing on screen when the flower
+  // finishes, and never dealt again by the deck below.
+  "Someone in this house is thinking about you right now. It's me. I'm in the kitchen.",
   "Statistically, you have survived 100% of your worst mornings. Undefeated.",
   "The mirror is legally obligated to say you look fine. I'm saying it voluntarily.",
   "Whatever your hair is doing right now — it's a choice, and I respect it.",
@@ -1597,7 +1610,6 @@ var NOTES = [
   "There's nowhere I'd rather be at 7am than here, being quietly ridiculous about you.",
   "You're my favorite person to be a little tired around.",
   "I'd choose this. The dishes, the laundry, the whole unglamorous thing. With you.",
-  "Someone in this house is thinking about you right now. It's me. I'm in the kitchen.",
   "I love the life we're building, and I love that you're the one building it with me.",
   "Whatever today asks of you, you're coming home to someone who's on your side."
 ];
@@ -1632,7 +1644,8 @@ function shuffled(arr){
 }
 
 function reshuffle(){
-  var deck = shuffled(NOTES.map(function(_,i){return i;}));
+  // Start at 1: index 0 is the opening line, shown on arrival rather than dealt.
+  var deck = shuffled(NOTES.slice(1).map(function(_,i){return i + 1;}));
   try{ localStorage.setItem(DECK_KEY, JSON.stringify(deck)); } catch(e){}
   return deck;
 }
@@ -1649,7 +1662,7 @@ var noteEl = document.getElementById('note');
 
 function showNote(first){
   if (first){
-    noteEl.innerHTML = 'you make ordinary days<br>my favorite ones.';
+    noteEl.textContent = NOTES[0];
     return;
   }
   var text = draw();
