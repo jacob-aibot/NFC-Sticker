@@ -359,8 +359,6 @@
 // Morning Mirror ships (YYYY-MM-DD), then leave it fixed forever after.
 // Do NOT set this to "today" casually; it anchors every future rotation.
 var MIRROR_LAUNCH_DATE = '2026-09-09'; // the day she first opened it (Wednesday night)
-// How long each species holds the screen before the next one takes over.
-var DAYS_PER_FLOWER = 7;
 
 // ---- small geometry helpers ----
 
@@ -1433,11 +1431,36 @@ function daysSinceLaunch(now){
   return dayIndex < 0 ? 0 : dayIndex;
 }
 
+/* The species changes on the calendar week, Monday through Sunday, rather
+   than on a 7-day odometer counted from launch — the two agree most weeks,
+   but a Wednesday launch keeps them permanently one weekday apart, and
+   "changes every Monday" was the actual ask. mondayOnOrAfterParts finds the
+   first Monday at or after the launch date; every date before that stays on
+   the launch species (this deployment: the four partial days from the
+   Wednesday-night launch through that Sunday all show the peony), and the
+   ordinary weekly rotation begins on that Monday. */
+function mondayOnOrAfterParts(dateStr){
+  var probe = new Date(dateStr + 'T00:00:00');
+  var dow = probe.getDay();               // 0 = Sunday .. 6 = Saturday
+  probe.setDate(probe.getDate() + (8 - dow) % 7);
+  return parseLocalDateParts(probe);
+}
+
+var FLOWER_WEEK_ANCHOR = mondayOnOrAfterParts(MIRROR_LAUNCH_DATE);
+
 function getFeaturedFlower(now){
-  var dayIndex = daysSinceLaunch(now);
-  var periodIndex = Math.floor(dayIndex / DAYS_PER_FLOWER);
-  var cycleIndex = Math.floor(periodIndex / FLOWERS.length);
-  var positionInCycle = periodIndex % FLOWERS.length;
+  var today = parseLocalDateParts(now || new Date());
+  var weekOffset = localDaysBetween(FLOWER_WEEK_ANCHOR, today);
+  if (weekOffset < 0) return FLOWERS[peonyPosition()];
+  var weekIndex = Math.floor(weekOffset / 7);
+  // fixedCycleOrder(0) is pinned so its first entry is the peony (see above) —
+  // exactly the flower already showing through the launch week. Shifting by
+  // one skips back past that entry, so the first Monday is guaranteed to be
+  // a different species rather than repeating it, and every cycle after the
+  // first packs in cleanly behind it.
+  var effectivePosition = weekIndex + 1;
+  var cycleIndex = Math.floor(effectivePosition / FLOWERS.length);
+  var positionInCycle = effectivePosition % FLOWERS.length;
   var order = fixedCycleOrder(cycleIndex);
   return FLOWERS[order[positionInCycle]];
 }
