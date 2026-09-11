@@ -1643,6 +1643,22 @@ var RECENTLY_SEEN = [
 ];
 var RECENTLY_SEEN_HOLD = 20;   // days to keep them clear of
 
+/* A note written for one particular date, which beats whatever the rotation
+   had planned for that day. Keyed by local calendar date, so it appears on her
+   Friday rather than on some timezone's idea of it. The rotation is untouched:
+   the note this displaces is not consumed, it simply comes round next cycle.
+   These do not live in NOTES, so they never enter the shuffle or the deck —
+   pinning a line does not mean seeing it again at random three weeks later. */
+var PINNED_NOTES = {
+  '2026-09-11': "As Rebecca Black once said… IT'S FRIDAY!!! Excited for another day of Daner ❤️"
+};
+
+function localDateKey(now){
+  var d = parseLocalDateParts(now || new Date());
+  var mm = d.m + 1;
+  return d.y + '-' + (mm < 10 ? '0' + mm : mm) + '-' + (d.day < 10 ? '0' + d.day : d.day);
+}
+
 function dailyNoteOrder(cycleIndex, pool){
   if (noteCycleCache[cycleIndex]) return noteCycleCache[cycleIndex];
   // seededOrder yields 0..pool-1; shift by one so index 0 is never dealt here.
@@ -1687,6 +1703,8 @@ function dailyNoteOrder(cycleIndex, pool){
 }
 
 function getDailyNote(now){
+  var pinned = PINNED_NOTES[localDateKey(now)];
+  if (pinned) return pinned;
   var dayIndex = daysSinceLaunch(now);
   if (dayIndex <= 0) return NOTES[0];
   var pool = NOTES.length - 1;
